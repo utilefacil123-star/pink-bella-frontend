@@ -4,7 +4,6 @@
   import { format } from "date-fns";
   import '../../styles/color.css';
   import {
-    listarCompras,
     atualizarStatusCompra,
     atualizarRastreio,
   } from "../../controllers/compraController";
@@ -16,11 +15,10 @@
   } from "../../controllers/freteController";
 
   function Compras() {
-    const { comprasT, setComprasT, carregarComprasT } = useContext(CompraContext);
+    const { comprasT, carregarComprasT } = useContext(CompraContext);
     const navigate = useNavigate();
 
     const [compras, setCompras] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [message, setMessage] = useState(null);
     const [saldo, setSaldo] = useState(0);
@@ -48,6 +46,7 @@
       carregarComprasT();
       carregarSaldo();
       atualizarRastreio();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -160,6 +159,7 @@
         }, 5000);
         return () => clearInterval(intervalo);
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [verificandoPagamento, frete]);
 
     const comprasFiltradas = compras.filter((c) => {

@@ -21,9 +21,6 @@ const CompraProvider = ({ children }) => {
     carregarComprasT();
   }, []);
 
-  useEffect(() => {
-  console.log(comprasT);
-}, [comprasT]);
 
   return (
     <CompraContext.Provider value={{ comprasT, setComprasT, carregarComprasT }}>

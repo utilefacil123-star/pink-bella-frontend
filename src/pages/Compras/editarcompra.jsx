@@ -1,18 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  listarClientes,
-  listarProdutos,
-  buscarCompraPorId,
-  calcularFrete,
-  atualizarCompra,
-} from "../../controllers/compraController";
+import { buscarCompraPorId, calcularFrete, atualizarCompra } from "../../controllers/compraController";
+import { listarClientes } from "../../controllers/clienteController";
+import { listarProdutos } from "../../controllers/produtoController";
 
 function EditarCompra() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [compra, setCompra] = useState(null);
   const [clientes, setClientes] = useState([]);
   const [produtos, setProdutos] = useState([]);
   const [clienteSelecionado, setClienteSelecionado] = useState(null);
@@ -27,7 +22,6 @@ function EditarCompra() {
     async function carregarDados() {
       try {
         const compraData = await buscarCompraPorId(id);
-        setCompra(compraData);
         setClienteSelecionado(compraData.cliente);
         setEndereco(compraData.endereco);
         setItensCompra(compraData.itens.map(item => ({
@@ -156,6 +150,7 @@ function EditarCompra() {
 
   useEffect(() => {
     calcularFreteParaCompra(itensCompra, endereco.cep);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itensCompra]);
 
   async function handleSalvar(e) {

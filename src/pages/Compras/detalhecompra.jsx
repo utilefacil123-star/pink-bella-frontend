@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { buscarCompraPorId } from '../../controllers/compraController';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend, CartesianGrid } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid } from 'recharts';
 
 // Funções utilitárias
 const formatCurrency = (value) => {
@@ -770,12 +770,12 @@ function DetalheCompra() {
 
   useEffect(() => {
     compraCarregar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   useEffect(() => {
     if (compra) {
       setDadosFiltrados(processarDados(compra));
-      console.log('compraasss ----->  '+compra.codigo_rastreio)
     }
   }, [filtroAtual, compra, processarDados]);
 

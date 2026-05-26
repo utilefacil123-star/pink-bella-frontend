@@ -16,13 +16,17 @@
     "d3-shape": "^3.2.0",
     "date-fns": "^4.1.0",
     "es-toolkit": "^1.39.8",
+    "highcharts": "^12.4.0",
+    "highcharts-react-official": "^3.2.3",
     "lucide-react": "^0.525.0",
-    "react": "^19.1.1",
+    "proj4": "^2.19.10",
+    "react": "^18.3.1",
     "react-bootstrap": "^2.10.10",
     "react-chartjs-2": "^5.3.0",
-    "react-dom": "^19.1.1",
+    "react-dom": "^18.3.1",
     "react-router-dom": "^7.6.3",
     "react-scripts": "5.0.1",
+    "react-simple-maps": "^3.0.0",
     "recharts": "^3.1.2",
     "web-vitals": "^2.1.4"
   },
@@ -49,6 +53,14 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "jest": {
+    "moduleNameMapper": {
+      "^react-router-dom$": "<rootDir>/node_modules/react-router-dom/dist/index.js",
+      "^react-router/dom$": "<rootDir>/node_modules/react-router/dist/development/dom-export.js",
+      "^react-router$": "<rootDir>/node_modules/react-router/dist/development/index.js",
+      "^axios$": "<rootDir>/node_modules/axios/dist/axios.js"
+    }
   },
   "devDependencies": {
     "@types/react": "^19.1.9",

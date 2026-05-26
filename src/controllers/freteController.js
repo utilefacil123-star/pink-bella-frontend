@@ -27,7 +27,7 @@ export async function obterSaldoMelhorEnvio() {
 // ✅ Gera PIX para pagar o valor do carrinho
 export async function gerarPixParaCarrinho() {
   try {
-    const response = await api.get('/melhor-envio/pix-valor-carinhoo');
+    const response = await api.get('/melhor-envio/pix-valor-carrinho');
     return response.data;
   } catch (error) {
     console.error('Erro ao gerar PIX para o carrinho:', error.response?.data || error.message);

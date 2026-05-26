@@ -72,7 +72,7 @@ function Sidebar({ isOpen }) {
             {/* Itens de Navegação */}
             <nav className="mt-4">
                 {navItems.map((item) => {
-                    const isActive = location.pathname.startsWith(item.path) && item.path !== '/' || (location.pathname === '/' && item.path === '/dashboard');
+                    const isActive = (location.pathname.startsWith(item.path) && item.path !== '/') || (location.pathname === '/' && item.path === '/dashboard');
                     
                     const itemStyle = isActive
                         ? { ...linkBaseStyle, ...navLinkActiveStyle }

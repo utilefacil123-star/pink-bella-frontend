@@ -22,21 +22,11 @@ export async function listarCompras() {
 }
 
 export async function atualizarStatusCompra(compraId, novoStatus) {
-  const url = `/compras/${compraId}/status`; // O caminho da URL
-  const payload = { status: novoStatus }; // O corpo da requisição
-
-  // --- ADICIONADO PARA VISUALIZAÇÃO ---
-  console.log('--- ENVIANDO REQUISIÇÃO DE STATUS ---');
-  console.log('Método: PATCH');
-  console.log('URL Completa (para API base):', api.defaults.baseURL + url); // Concatena com a baseURL do Axios
-  console.log('ID da Compra:', compraId);
-  console.log('Payload (corpo da requisição):', payload);
-  console.log('------------------------------------');
-  // ------------------------------------
+  const url = `/compras/${compraId}/status`;
+  const payload = { status: novoStatus };
 
   try {
-    const response = await api.put(url, payload); // Usa as variáveis url e payload
-    console.log('Resposta do servidor:', response.data);
+    const response = await api.put(url, payload);
     return response.data;
   } catch (error) {
     console.error(`Erro ao atualizar status da compra ${compraId}:`, error.response ? error.response.data : error.message);
@@ -44,20 +34,14 @@ export async function atualizarStatusCompra(compraId, novoStatus) {
   }
 }
 
-export async function atualizarRastreio () {
+export async function atualizarRastreio() {
   try {
-    const url = '/melhor-envio/rastreios/atualizar'
-    const response = await api.get(url);
-    const data = await response.data;
-    if (data.sucesso) {
-      console.log('Rastreio atualizado com sucesso!');
-    } else {
-      console.error('Erro ao atualizar rastreio:', data);
-    }
+    const response = await api.get('/melhor-envio/rastreios/atualizar');
+    return response.data;
   } catch (error) {
     console.error('Erro ao atualizar rastreio:', error);
   }
-};
+}
 
 // Buscar compra pelo ID
 export async function buscarCompraPorId(id) {
@@ -66,28 +50,6 @@ export async function buscarCompraPorId(id) {
     return response.data;
   } catch (error) {
     console.error("Erro ao buscar compra por ID:", error);
-    throw error;
-  }
-}
-
-// Listar clientes
-export async function listarClientes() {
-  try {
-    const response = await api.get('/clientes');
-    return response.data;
-  } catch (error) {
-    console.error('Erro ao listar clientes:', error);
-    throw error;
-  }
-}
-
-// Listar produtos
-export async function listarProdutos() {
-  try {
-    const response = await api.get('/produtos');
-    return response.data;
-  } catch (error) {
-    console.error('Erro ao listar produtos:', error);
     throw error;
   }
 }

@@ -6,22 +6,20 @@ import { listarClientes } from "../../controllers/clienteController";
 function FretePage() {
   const [nomeCliente, setNomeCliente] = useState('');
   const [cepDestino, setCepDestino] = useState('');
-  const [produtos, setProdutos] = useState([{ nome: '', valor: '' }]);
+  const [produtos, setProdutos] = useState([{ nome: '', valor: '', quantidade: 1 }]);
   const [fretes, setFretes] = useState([]);
   const [freteSelecionado, setFreteSelecionado] = useState(null);
   const [endereco, setEndereco] = useState('');
   const [descontoProduto, setDescontoProduto] = useState('');
   const [descontoFrete, setDescontoFrete] = useState('');
   const [mensagem, setMensagem] = useState('');
-  const [enderecoFrete, setEnderecoFrete] = useState(null); 
-  const [resultadoFrete, setResultadoFrete] = useState(null);
+  const [enderecoFrete, setEnderecoFrete] = useState(null);
   const [clientes, setClientes] = useState([]);
 
   const carregarClientes = async () => {
       try {
         const dados = await listarClientes();
         setClientes(dados);
-        console.log(clientes)
       } catch (error) {
         console.error("Erro ao carregar clientes:", error);
         alert("Não foi possível carregar a lista de clientes.");
@@ -30,6 +28,7 @@ function FretePage() {
 
   useEffect(() => {
       carregarClientes();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
   const handleProdutoChange = (index, field, value) => {
@@ -39,36 +38,28 @@ function FretePage() {
   };
 
   const adicionarProduto = () => {
-    setProdutos([...produtos, { nome: '', valor: '' }]);
+    setProdutos([...produtos, { nome: '', valor: '', quantidade: 1 }]);
   };
 
   const calFrete = async () => {
-    try {
-      // eslint-disable-next-line no-undef
-      const response = await calcularFrete(cepDestino, [
-  { produto_id: 1, quantidade: 1 }
-  
-]);
-console.log('resposta ----> '+response.enderecoDestino)
-  if (response && response.opcoes_frete) {
-        setResultadoFrete(response.opcoes_frete);
-      } else {
-        console.warn('Resposta do backend não contém "opcoes_frete" ou é nula/indefinida.');
-        setResultadoFrete([]);
-      }
+    if (!cepDestino) {
+      alert('Informe o CEP de destino.');
+      return;
+    }
 
-  if (response && response.opcoes_frete) {
+    try {
+      const quantidadeTotal = produtos.reduce((acc, p) => acc + (parseInt(p.quantidade) || 1), 0);
+      const response = await calcularFrete(cepDestino, [{ produto_id: 1, quantidade: quantidadeTotal }]);
+
+      if (response && response.opcoes_frete) {
         setFretes(response.opcoes_frete);
-        console.log(fretes)
       } else {
-        console.warn('Resposta do backend não contém "opcoes_frete" ou é nula/indefinida.');
-        setResultadoFrete([]);
+        setFretes([]);
       }
-      console.log(response.opcoes_frete)
-      setEnderecoFrete(response.enderecoDestino)
+      setEnderecoFrete(response.enderecoDestino);
       setEndereco(`${response.enderecoDestino.logradouro} – Bairro ${response.enderecoDestino.bairro}\nCEP: ${response.enderecoDestino.cep} – ${response.enderecoDestino.cidade}, ${response.enderecoDestino.estado}`);
     } catch (error) {
-      console.log('Erro ao calcular o frete');
+      alert('Erro ao calcular o frete. Verifique o CEP e tente novamente.');
     }
   };
 
@@ -223,8 +214,8 @@ ${endereco}
       </div>
       <h5>Produtos</h5>
       {produtos.map((produto, index) => (
-        <div key={index} className="row mb-2">
-          <div className="col">
+        <div key={index} className="row mb-2 align-items-center">
+          <div className="col-5">
             <input
               type="text"
               className="form-control"
@@ -233,14 +224,34 @@ ${endereco}
               onChange={e => handleProdutoChange(index, 'nome', e.target.value)}
             />
           </div>
-          <div className="col">
+          <div className="col-3">
             <input
               type="number"
               className="form-control"
-              placeholder="Valor"
+              placeholder="Valor (R$)"
               value={produto.valor}
               onChange={e => handleProdutoChange(index, 'valor', e.target.value)}
             />
+          </div>
+          <div className="col-2">
+            <input
+              type="number"
+              className="form-control"
+              placeholder="Qtd"
+              min="1"
+              value={produto.quantidade}
+              onChange={e => handleProdutoChange(index, 'quantidade', e.target.value)}
+            />
+          </div>
+          <div className="col-2">
+            {produtos.length > 1 && (
+              <button
+                className="btn btn-outline-danger btn-sm w-100"
+                onClick={() => setProdutos(produtos.filter((_, i) => i !== index))}
+              >
+                ✕
+              </button>
+            )}
           </div>
         </div>
       ))}
