@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
 import { CompraProvider } from './pages/Compras/CompraContext.js';
+import { ToastProvider } from './context/ToastContext.js';
 
 import Sidebar from './components/Sidebar.jsx';
 import Header from './components/Header.jsx';
@@ -21,109 +22,94 @@ import NovoProduto from './pages/Produtos/NovoProduto.jsx';
 import Configuracoes from './pages/Configuracoes/index.jsx';
 
 function PrivateRoute({ children }) {
-    const token = localStorage.getItem('token');
-    if (!token) {
-        return <Navigate to="/login" replace />;
-    }
-    return children;
+  const token = localStorage.getItem('token');
+  if (!token) return <Navigate to="/login" replace />;
+  return children;
 }
 
 const DashboardLayout = () => {
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  // Desktop: sidebar pode ser colapsada para mini-mode
+  const [isMini, setIsMini] = useState(false);
+  // Mobile: sidebar abre como drawer
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
-    const toggleSidebar = () => {
-        setIsSidebarOpen(!isSidebarOpen);
-    };
+  const toggleDesktop = () => setIsMini((v) => !v);
+  const toggleMobile  = () => setIsMobileOpen((v) => !v);
+  const closeMobile   = () => setIsMobileOpen(false);
 
-    const sidebarWidth = isSidebarOpen ? '280px' : '80px';
-    const headerHeight = '80px';
+  const wrapperClass = [
+    'app-wrapper',
+    isMini ? 'sidebar-mini' : '',
+    isMobileOpen ? 'mobile-sidebar-open' : '',
+  ].filter(Boolean).join(' ');
 
-    return (
-        <div
-            style={{
-                display: 'flex',
-                minHeight: '100vh',
-                backgroundColor: 'var(--background-color)',
-                transition: 'background-color 0.3s ease',
-            }}
-        >
-            <Sidebar isOpen={isSidebarOpen} />
+  return (
+    <div className={wrapperClass}>
+      {isMobileOpen && <div className="sidebar-overlay" onClick={closeMobile} />}
 
-            <div
-                style={{
-                    flexGrow: 1,
-                    marginLeft: sidebarWidth,
-                    width: `calc(100% - ${sidebarWidth})`,
-                    transition: 'all 0.3s ease',
-                    position: 'relative',
-                }}
-            >
-                <Header toggleSidebar={toggleSidebar} />
+      <Sidebar
+        isMini={isMini}
+        isMobileOpen={isMobileOpen}
+        onCloseMobile={closeMobile}
+      />
 
-                <main
-                    style={{
-                        padding: '30px',
-                        paddingTop: headerHeight,
-                        minHeight: `calc(100vh - ${headerHeight})`,
-                        color: 'var(--text-color)',
-                    }}
-                >
-                    <CompraProvider>
-                        <Outlet />
-                    </CompraProvider>
-                </main>
-            </div>
-        </div>
-    );
+      <div className="main-content-wrapper">
+        <Header onToggleDesktop={toggleDesktop} onToggleMobile={toggleMobile} />
+
+        <main className="main-content">
+          <ToastProvider>
+            <CompraProvider>
+              <Outlet />
+            </CompraProvider>
+          </ToastProvider>
+        </main>
+      </div>
+    </div>
+  );
 };
 
-
 function App() {
-    return (
-        <Router>
-            <Routes>
-                {/* Rota pública */}
-                <Route path="/login" element={<Login />} />
+  return (
+    <Router>
+      <Routes>
+        <Route path="/login" element={<Login />} />
 
-                {/* Rotas protegidas */}
-                <Route
-                    path="/"
-                    element={
-                        <PrivateRoute>
-                            <DashboardLayout />
-                        </PrivateRoute>
-                    }
-                >
-                    <Route index element={<Home />} />
+        <Route
+          path="/"
+          element={
+            <PrivateRoute>
+              <DashboardLayout />
+            </PrivateRoute>
+          }
+        >
+          <Route index element={<Home />} />
 
-                    {/* Clientes */}
-                    <Route path="/clientes" element={<Clientes />} />
-                    <Route path="/clientes/novo" element={<NovoCliente />} />
-                    <Route path="/clientes/editar/:id" element={<NovoCliente />} />
+          <Route path="/clientes" element={<Clientes />} />
+          <Route path="/clientes/novo" element={<NovoCliente />} />
+          <Route path="/clientes/editar/:id" element={<NovoCliente />} />
 
-                    {/* Compras */}
-                    <Route path="/compras" element={<Compras />} />
-                    <Route path="/compras/novo/:clienteId" element={<NovaCompra />} />
-                    <Route path="/compras/editar/:id" element={<EditarCompra />} />
-                    <Route path="/compras/detalhe/:id" element={<DetalherCompra />} />
+          <Route path="/compras" element={<Compras />} />
+          <Route path="/compras/novo/:clienteId" element={<NovaCompra />} />
+          <Route path="/compras/editar/:id" element={<EditarCompra />} />
+          <Route path="/compras/detalhe/:id" element={<DetalherCompra />} />
 
-                    {/* Outras */}
-                    <Route path="/frete" element={<FretePage />} />
-                    <Route path="/produtos" element={<Produtos />} />
-                    <Route path="/produtos/novo" element={<NovoProduto />} />
-                    <Route path="/produtos/editar/:id" element={<NovoProduto />} />
-                    <Route path="/configuracoes" element={<Configuracoes />} />
+          <Route path="/frete" element={<FretePage />} />
+          <Route path="/produtos" element={<Produtos />} />
+          <Route path="/produtos/novo" element={<NovoProduto />} />
+          <Route path="/produtos/editar/:id" element={<NovoProduto />} />
+          <Route path="/configuracoes" element={<Configuracoes />} />
 
-                    <Route path="*" element={
-                        <div className="container mt-5 text-center">
-                            <h1 style={{ color: 'var(--primary-color)' }}>404 - Página não encontrada</h1>
-                            <p>A URL que você tentou acessar não existe.</p>
-                        </div>
-                    } />
-                </Route>
-            </Routes>
-        </Router>
-    );
+          <Route path="*" element={
+            <div className="empty-state" style={{ minHeight: '60vh' }}>
+              <i className="fas fa-map-signs empty-state-icon" />
+              <p className="empty-state-title">404 — Página não encontrada</p>
+              <p className="empty-state-desc">A rota acessada não existe no sistema.</p>
+            </div>
+          } />
+        </Route>
+      </Routes>
+    </Router>
+  );
 }
 
 export default App;

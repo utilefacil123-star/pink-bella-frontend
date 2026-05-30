@@ -27,7 +27,7 @@ function Home() {
   const [filterPeriod, setFilterPeriod] = useState("month");
   const [customRange, setCustomRange] = useState({ start: "", end: "" });
 
-  // Atualiza o relógio e animação uma vez
+  // Atualiza o relógio
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -37,7 +37,7 @@ function Home() {
   const formatTime = (date) =>
     date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const formatDate = (date) =>
-    date.toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" });
+    date.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const formatCurrency = (value) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
@@ -75,30 +75,86 @@ function Home() {
     [filteredCompras]
   );
 
-  // Highcharts
+  const primaryColor = currentTheme?.['--primary-color'] || '#d81b60';
+  const surfaceColor = currentTheme?.['--surface-color'] || '#1e2022';
+  const textColor    = currentTheme?.['--text-color']    || '#f3f4f6';
+  const textMuted    = currentTheme?.['--text-muted']    || '#9ca3af';
+
+  // Highcharts — tema escuro integrado
+  const chartThemeBase = {
+    chart: {
+      backgroundColor: "transparent",
+      style: { fontFamily: "'Outfit', 'Inter', sans-serif" },
+    },
+    title: { style: { color: textColor, fontWeight: "700" } },
+    xAxis: {
+      labels: { style: { color: textMuted } },
+      lineColor: "rgba(255,255,255,0.1)",
+      gridLineColor: "rgba(255,255,255,0.04)",
+    },
+    yAxis: {
+      labels: { style: { color: textMuted } },
+      title: { style: { color: textMuted } },
+      gridLineColor: "rgba(255,255,255,0.06)",
+    },
+    legend: { itemStyle: { color: textMuted } },
+    tooltip: {
+      backgroundColor: surfaceColor,
+      borderColor: "rgba(255,255,255,0.1)",
+      style: { color: textColor },
+    },
+    credits: { enabled: false },
+  };
+
   const vendasOptions = useMemo(
     () => ({
-      chart: { type: "line", backgroundColor: "transparent" },
-      title: { text: "Vendas por Período" },
-      xAxis: { categories: chartData.map((c) => c.date) },
-      yAxis: { title: { text: "Valor Total (R$)" } },
-      series: [{ name: "Valor Total", data: chartData.map((c) => c.faturamento) }],
+      ...chartThemeBase,
+      chart: { ...chartThemeBase.chart, type: "area" },
+      title: { ...chartThemeBase.title, text: "Faturamento por Período" },
+      xAxis: { ...chartThemeBase.xAxis, categories: chartData.map((c) => c.date) },
+      yAxis: { ...chartThemeBase.yAxis, title: { text: "Valor (R$)" } },
+      plotOptions: {
+        area: {
+          fillColor: {
+            linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
+            stops: [
+              [0, `${primaryColor}50`],
+              [1, `${primaryColor}05`],
+            ],
+          },
+          marker: { radius: 4, fillColor: primaryColor },
+          lineWidth: 2,
+          lineColor: primaryColor,
+        },
+      },
+      series: [{ name: "Faturamento (R$)", data: chartData.map((c) => c.faturamento), color: primaryColor }],
     }),
-    [chartData]
+    [chartData, primaryColor] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const statusOptions = useMemo(
     () => ({
-      chart: { type: "pie", backgroundColor: "transparent" },
-      title: { text: "Status das Compras" },
+      ...chartThemeBase,
+      chart: { ...chartThemeBase.chart, type: "pie" },
+      title: { ...chartThemeBase.title, text: "Status das Compras" },
+      plotOptions: {
+        pie: {
+          dataLabels: { enabled: true, style: { color: "#f3f4f6", fontWeight: "600" } },
+          borderWidth: 0,
+          slicedOffset: 6,
+        },
+      },
       series: [
         {
           name: "Quantidade",
           colorByPoint: true,
-          data: ["Pendente", "Entregue", "Em Envio", "Postado", "Cancelado"].map((status) => ({
-            name: status,
-            y: filteredCompras.filter((c) => c.status_compra === status).length,
-          })),
+          data: [
+            { name: "Pendente",  y: filteredCompras.filter((c) => c.status_compra === "Pendente").length,  color: "#f59e0b" },
+            { name: "Pago",      y: filteredCompras.filter((c) => c.status_compra === "Pago").length,      color: "#10b981" },
+            { name: "Postado",   y: filteredCompras.filter((c) => c.status_compra === "Postado").length,   color: "#3b82f6" },
+            { name: "Entregue",  y: filteredCompras.filter((c) => c.status_compra === "Entregue").length,  color: "#6366f1" },
+            { name: "Cancelado", y: filteredCompras.filter((c) => c.status_compra === "Cancelado").length, color: "#ef4444" },
+          ].filter((d) => d.y > 0),
         },
       ],
     }),
@@ -108,70 +164,74 @@ function Home() {
   const mapOptions = useMemo(
     () => ({
       chart: { map: brazilMapData, backgroundColor: "transparent" },
-      title: { text: "Vendas por Estado" },
+      title: { text: "Vendas por Estado", style: { color: textColor, fontWeight: "700" } },
+      credits: { enabled: false },
       series: [
         {
           mapData: brazilMapData,
           joinBy: ["id", "sigla"],
           name: "Vendas",
           data: [],
-          states: { hover: { color: "#BADA55" } },
-          dataLabels: { enabled: true, format: "{point.name}" },
+          states: { hover: { color: primaryColor } },
+          dataLabels: { enabled: true, format: "{point.name}", style: { color: textColor } },
         },
       ],
     }),
-    []
+    [primaryColor, textColor] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   // Indicadores
   const faturamentoTotal = filteredCompras.reduce((acc, compra) => acc + compra.valor_total, 0);
   const totalVendas = filteredCompras.length;
   const novosClientes = [...new Set(filteredCompras.map((c) => c.cliente?.id))].length;
-  const produtosEstoque = 956;
+  const comprasPendentes = filteredCompras.filter((c) => c.status_compra === "Pendente").length;
 
   const analyticsData = [
     {
-      icon: "fas fa-money-bill-wave",
-      title: "Faturamento Total",
+      icon: "fas fa-dollar-sign",
+      title: "Faturamento",
       value: formatCurrency(faturamentoTotal),
-      color: "#2ecc71",
+      color: "var(--status-success)",
+      borderColor: "rgba(16,185,129,0.4)",
+      bgColor: "rgba(16,185,129,0.06)",
     },
     {
       icon: "fas fa-shopping-bag",
-      title: "Total de Vendas",
+      title: "Vendas",
       value: totalVendas,
-      color: currentTheme.primaryColor,
+      color: "var(--primary-color)",
+      borderColor: "rgba(216,27,96,0.4)",
+      bgColor: "rgba(216,27,96,0.06)",
     },
     {
       icon: "fas fa-users",
-      title: "Novos Clientes",
+      title: "Clientes Únicos",
       value: novosClientes,
-      color: "#3498db",
+      color: "var(--status-info)",
+      borderColor: "rgba(59,130,246,0.4)",
+      bgColor: "rgba(59,130,246,0.06)",
     },
     {
-      icon: "fas fa-box-open",
-      title: "Produtos em Estoque",
-      value: produtosEstoque,
-      color: "#f1c40f",
+      icon: "fas fa-clock",
+      title: "Pendentes",
+      value: comprasPendentes,
+      color: "var(--status-warning)",
+      borderColor: "rgba(245,158,11,0.4)",
+      bgColor: "rgba(245,158,11,0.06)",
     },
   ];
 
   const latestPurchases = comprasT.slice(0, 5);
 
-  const getStatusBadgeStyle = (status) => {
-    switch (status) {
-      case "Pendente":
-        return { backgroundColor: "#ff9800", color: "white" };
-      case "Entregue":
-        return { backgroundColor: "#2ecc71", color: "white" };
-      case "Em Envio":
-      case "Postado":
-        return { backgroundColor: "#3498db", color: "white" };
-      case "Cancelado":
-        return { backgroundColor: "#e74c3c", color: "white" };
-      default:
-        return { backgroundColor: "gray", color: "white" };
-    }
+  const statusToClass = {
+    "Pendente":  "badge-status pendente",
+    "Pago":      "badge-status pago",
+    "Postado":   "badge-status postado",
+    "Entregue":  "badge-status pago",
+    "Cancelado": "badge-status cancelado",
+    "Aguardando Etiqueta": "badge-status aguardando",
+    "Etiqueta PDF Gerada": "badge-status envio",
+    "Finalizado": "badge-status pago",
   };
 
   const formatPurchaseDate = (dateTimeString) => {
@@ -189,201 +249,308 @@ function Home() {
     });
   };
 
-  const cardBaseStyle = {
-    borderRadius: "15px",
-    background: "var(--surface-color)",
-    color: "var(--text-color)",
-    boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
-    transition: "all 0.4s ease",
-    cursor: "pointer",
+  const periodLabels = {
+    day: "Hoje",
+    week: "Esta Semana",
+    month: "Este Mês",
+    year: "Este Ano",
+    range: "Período",
   };
 
   return (
-    <div className="container-fluid py-4">
-      {/* FILTROS */}
-      <div className="d-flex gap-2 justify-content-end mb-4">
-        <input
-          type="date"
-          className="form-control"
-          style={{ maxWidth: "150px" }}
-          onChange={(e) => setCustomRange({ ...customRange, start: e.target.value })}
-        />
-        <input
-          type="date"
-          className="form-control"
-          style={{ maxWidth: "150px" }}
-          onChange={(e) => setCustomRange({ ...customRange, end: e.target.value })}
-        />
-        <select
-          className="form-select"
-          style={{ maxWidth: "150px" }}
-          onChange={(e) => setFilterPeriod(e.target.value)}
-        >
-          <option value="day">Dia</option>
-          <option value="week">Semana</option>
-          <option value="month">Mês</option>
-          <option value="year">Ano</option>
-          <option value="range">Intervalo</option>
-        </select>
+    <div className="container-fluid py-3">
+
+      {/* Header com Filtros */}
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+          <h1 className="fw-bold mb-1" style={{ color: "var(--text-color)", fontSize: "1.6rem" }}>
+            <i className="fas fa-chart-line me-2" style={{ color: "var(--primary-color)" }} />
+            Dashboard
+          </h1>
+          <p className="text-muted small mb-0">
+            Visão geral —{" "}
+            <span style={{ color: "var(--primary-color)", fontWeight: "600" }}>
+              {periodLabels[filterPeriod] || "Período"}
+            </span>
+          </p>
+        </div>
+
+        <div className="d-flex flex-wrap gap-2 align-items-center">
+          {filterPeriod === "range" && (
+            <>
+              <input
+                type="date"
+                className="form-control"
+                style={{ maxWidth: "150px" }}
+                onChange={(e) => setCustomRange({ ...customRange, start: e.target.value })}
+              />
+              <input
+                type="date"
+                className="form-control"
+                style={{ maxWidth: "150px" }}
+                onChange={(e) => setCustomRange({ ...customRange, end: e.target.value })}
+              />
+            </>
+          )}
+          <select
+            className="form-select"
+            style={{ maxWidth: "155px" }}
+            value={filterPeriod}
+            onChange={(e) => setFilterPeriod(e.target.value)}
+          >
+            <option value="day">Hoje</option>
+            <option value="week">Esta Semana</option>
+            <option value="month">Este Mês</option>
+            <option value="year">Este Ano</option>
+            <option value="range">Período personalizado</option>
+          </select>
+        </div>
       </div>
 
-
-      {/* INDICADORES */}
-      <div className="row g-4 mb-5">
+      {/* Cards de Indicadores */}
+      <div className="row g-3 mb-4">
         {analyticsData.map((card, index) => (
-          <div key={index} className="col-lg-3 col-md-6">
+          <div key={index} className="col-lg-3 col-md-6 col-sm-6">
             <div
-              className="card h-100 border-0 shadow-lg"
+              className="card-premium h-100"
               style={{
-                ...cardBaseStyle,
-                borderLeft: `5px solid ${card.color}`,
+                borderLeft: `4px solid ${card.color}`,
+                backgroundColor: card.bgColor,
               }}
             >
               <div className="card-body p-4 d-flex align-items-center justify-content-between">
                 <div>
-                  <p className="text-uppercase fw-semibold mb-1" style={{ fontSize: "0.9rem", color: card.color }}>
+                  <p
+                    className="text-uppercase fw-bold mb-1"
+                    style={{ fontSize: "0.72rem", color: card.color, letterSpacing: "0.06em" }}
+                  >
                     {card.title}
                   </p>
-                  <h3 className="fw-bold mb-0">{card.value}</h3>
+                  <h3 className="fw-bold mb-0" style={{ color: "var(--text-color)" }}>
+                    {card.value}
+                  </h3>
                 </div>
-                <i className={`${card.icon} fa-3x`} style={{ color: card.color, opacity: 0.8 }}></i>
+                <div
+                  style={{
+                    width: "52px",
+                    height: "52px",
+                    borderRadius: "50%",
+                    backgroundColor: `${card.color}20`,
+                    border: `1px solid ${card.borderColor}`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <i className={card.icon} style={{ color: card.color, fontSize: "1.3rem" }} />
+                </div>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-       {/* Relatório de Ações e Hora Atual */}
-            <div className="row g-4 mb-5">
-                
-                {/* 1. Tabela de Últimas Compras (Dinâmico) */}
-                <div className="col-lg-8">
-                    <div 
-                        className="card h-100 border-0 shadow-lg"
-                        style={cardBaseStyle}
-                    >
-                        <div 
-                            className="card-header border-0" 
-                            style={{ 
-                                // Cor Primária no cabeçalho
-                                background: 'var(--primary-color)', 
-                                color: 'white', 
-                                borderTopLeftRadius: '15px', 
-                                borderTopRightRadius: '15px' 
-                            }}>
-                            <h5 className="mb-0 fw-bold">
-                                <i className="fas fa-list-alt me-2"></i> Últimas Compras
-                            </h5>
-                        </div>
-                        <div className="card-body p-4">
-                            {/* A tabela agora é populada dinamicamente usando latestPurchases (que é um slice de comprasT) */}
-                            <table className="table table-hover" style={{ '--bs-table-bg': 'var(--surface-color)', '--bs-table-color': 'var(--text-color)', border: `1px solid var(--border-color)` }}>
-                                <thead>
-                                    <tr>
-                                        <th style={{ color: 'var(--primary-color)' }}>Cliente</th>
-                                        <th style={{ color: 'var(--primary-color)' }}>Data</th>
-                                        <th className="text-end" style={{ color: 'var(--primary-color)' }}>Valor Total</th>
-                                        <th style={{ color: 'var(--primary-color)' }}>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {latestPurchases.map((purchase) => (
-                                        <tr key={purchase.id}>
-                                            {/* Usando purchase.cliente.nome */}
-                                            <td className="fw-semibold">{purchase.cliente.nome}</td>
-                                            {/* Usando purchase.data_compra */}
-                                            <td className="text-muted"><i className="far fa-calendar-alt me-1"></i> {formatPurchaseDate(purchase.data_compra)}</td>
-                                            {/* Usando purchase.valor_total com formatação de moeda */}
-                                            <td className="fw-bold text-end">{formatCurrency(purchase.valor_total)}</td>
-                                            {/* Usando purchase.status_compra */}
-                                            <td>
-                                                <span 
-                                                    className="badge rounded-pill fw-bold py-2 px-3" 
-                                                    style={getStatusBadgeStyle(purchase.status_compra)}
-                                                >
-                                                    {purchase.status_compra}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            <Link 
-                                to="/compras" 
-                                className="btn btn-sm mt-3 fw-bold" 
-                                style={{ 
-                                    // Cor Secundária para o botão
-                                    backgroundColor: 'var(--secondary-color)', 
-                                    color: 'var(--surface-color)',
-                                    borderRadius: '10px'
-                                }}>
-                                Ver todas as Vendas <i className="fas fa-arrow-right ms-2"></i>
-                            </Link>
-                        </div>
-                    </div>
+      {/* Últimas Compras + Relógio e Ações */}
+      <div className="row g-4 mb-4">
+
+        {/* Tabela de Últimas Compras */}
+        <div className="col-lg-8">
+          <div className="card-premium h-100">
+            <div
+              className="px-4 py-3 d-flex align-items-center justify-content-between"
+              style={{ borderBottom: "1px solid var(--border-color)" }}
+            >
+              <h5 className="fw-bold mb-0 d-flex align-items-center gap-2">
+                <i className="fas fa-list-alt" style={{ color: "var(--primary-color)" }} />
+                Últimas Compras
+              </h5>
+              <Link
+                to="/compras"
+                className="fw-semibold text-decoration-none"
+                style={{ color: "var(--primary-color)", fontSize: "0.85rem" }}
+              >
+                Ver todas <i className="fas fa-arrow-right ms-1" />
+              </Link>
+            </div>
+            <div className="card-body p-0">
+              {latestPurchases.length === 0 ? (
+                <div className="text-center py-5">
+                  <i className="fas fa-shopping-bag fa-3x text-muted mb-3" style={{ opacity: 0.3 }} />
+                  <p className="text-muted small">Nenhuma compra registrada ainda.</p>
                 </div>
-
-                {/* 2. Relógio e Ações Rápidas */}
-                <div className="col-lg-4">
-                    <div 
-                        className="card h-100 border-0 shadow-lg"
-                        style={cardBaseStyle}
-                    >
-                        <div className="card-body text-center p-4">
-                            
-                            {/* Relógio e Data */}
-                            <div className="p-3 mb-4" style={{ backgroundColor: 'var(--background-color-subtle)', borderRadius: '10px' }}>
-                                <i className="fas fa-clock fa-3x mb-3" style={{ color: 'var(--primary-color)' }}></i>
-                                <h2 className="display-4 fw-bold" style={{ color: 'var(--text-color)' }}>{formatTime(currentTime)}</h2>
-                                <p className="lead" style={{ color: 'var(--secondary-color)' }}>{formatDate(currentTime)}</p>
+              ) : (
+                <div className="table-responsive">
+                  <table className="table table-premium table-hover mb-0">
+                    <thead>
+                      <tr>
+                        <th>Cliente</th>
+                        <th>Data</th>
+                        <th className="text-end">Valor</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {latestPurchases.map((purchase) => (
+                        <tr key={purchase.id}>
+                          <td>
+                            <div className="d-flex align-items-center gap-2">
+                              <div
+                                className="d-flex align-items-center justify-content-center text-white rounded-circle"
+                                style={{
+                                  width: "32px",
+                                  height: "32px",
+                                  backgroundColor: "var(--primary-color)",
+                                  fontSize: "0.8rem",
+                                  fontWeight: "bold",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {purchase.cliente?.nome?.charAt(0).toUpperCase() || "?"}
+                              </div>
+                              <span className="fw-semibold">{purchase.cliente?.nome || "-"}</span>
                             </div>
-                            
-                            {/* Ações Rápidas - Simplificado */}
-                            <h5 className="fw-bold mb-3" style={{ color: 'var(--text-color)' }}>
-                                Ações Rápidas
-                            </h5>
-                            <div className="d-grid gap-2">
-                                {/* Botão Principal (Nova Venda) usando Cor Primária */}
-                                <Link to="/compras" className="btn btn-lg fw-bold" style={{ backgroundColor: 'var(--primary-color)', color: 'white', borderRadius: '10px' }}>
-                                    <i className="fas fa-plus-circle me-2"></i> Nova Venda
-                                </Link>
-                                
-                                {/* Botão Secundário (Novo Cliente) usando Cor Secundária */}
-                                <Link to="/clientes/novo" className="btn btn-lg fw-bold" style={{ backgroundColor: 'var(--secondary-color)', color: 'var(--surface-color)', borderRadius: '10px' }}>
-                                    <i className="fas fa-user-plus me-2"></i> Novo Cliente
-                                </Link>
-                                
-                                {/* Botão de Contorno */}
-                                <Link 
-                                    to="/frete" 
-                                    className="btn btn-lg fw-bold btn-outline-light" 
-                                    style={{ 
-                                        borderColor: 'var(--primary-color)', 
-                                        color: 'var(--primary-color)',
-                                        borderRadius: '10px'
-                                    }}>
-                                    <i className="fas fa-truck me-2"></i> Calcular Frete
-                                </Link>
-                            </div>
-                        </div>
-                        </div>
-                        </div>
-                        </div>
-
-      {/* GRÁFICOS HIGHCHARTS */}
-      <div className="row g-4 mb-5">
-        <div className="col-lg-6">
-          <HighchartsReact highcharts={Highcharts} options={vendasOptions} />
+                          </td>
+                          <td className="text-muted">
+                            <i className="far fa-calendar-alt me-1" />
+                            {formatPurchaseDate(purchase.data_compra)}
+                          </td>
+                          <td className="fw-bold text-end" style={{ color: "var(--status-success)" }}>
+                            {formatCurrency(purchase.valor_total)}
+                          </td>
+                          <td>
+                            <span className={statusToClass[purchase.status_compra] || "badge-status"}>
+                              {purchase.status_compra}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="col-lg-6">
-          <HighchartsReact highcharts={Highcharts} options={statusOptions} />
+
+        {/* Relógio + Ações Rápidas */}
+        <div className="col-lg-4">
+          <div className="card-premium h-100">
+            <div className="card-body p-4 d-flex flex-column">
+
+              {/* Relógio */}
+              <div
+                className="text-center p-4 mb-4 rounded"
+                style={{
+                  backgroundColor: "var(--background-color)",
+                  border: "1px solid var(--border-color)",
+                  borderRadius: "var(--radius-md)",
+                }}
+              >
+                <i
+                  className="fas fa-clock mb-2"
+                  style={{ color: "var(--primary-color)", fontSize: "1.5rem", display: "block" }}
+                />
+                <div
+                  className="fw-bold"
+                  style={{
+                    fontSize: "2.2rem",
+                    fontVariantNumeric: "tabular-nums",
+                    color: "var(--text-color)",
+                    letterSpacing: "2px",
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {formatTime(currentTime)}
+                </div>
+                <p className="text-muted small mt-2 mb-0" style={{ textTransform: "capitalize" }}>
+                  {formatDate(currentTime)}
+                </p>
+              </div>
+
+              {/* Ações Rápidas */}
+              <h6 className="fw-bold mb-3" style={{ color: "var(--text-color)" }}>
+                Ações Rápidas
+              </h6>
+              <div className="d-grid gap-2">
+                <Link to="/clientes" className="btn-primary-brand text-center text-decoration-none py-2">
+                  <i className="fas fa-plus-circle me-2" />
+                  Nova Venda
+                </Link>
+                <Link to="/clientes/novo" className="btn-secondary-brand text-center text-decoration-none py-2">
+                  <i className="fas fa-user-plus me-2" />
+                  Novo Cliente
+                </Link>
+                <Link
+                  to="/frete"
+                  className="text-center text-decoration-none py-2 fw-semibold"
+                  style={{
+                    borderRadius: "var(--radius-md)",
+                    border: "1px solid var(--border-color)",
+                    color: "var(--text-color)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "all 0.2s ease",
+                    padding: "10px",
+                  }}
+                >
+                  <i className="fas fa-truck me-2" style={{ color: "var(--primary-color)" }} />
+                  Calcular Frete
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* MAPA */}
-      <div className="row g-4 mb-5">
+      {/* Gráficos Highcharts */}
+      <div className="row g-4 mb-4">
+        <div className="col-lg-7">
+          <div className="card-premium">
+            <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--border-color)" }}>
+              <h5 className="fw-bold mb-0 d-flex align-items-center gap-2">
+                <i className="fas fa-chart-area" style={{ color: "var(--primary-color)" }} />
+                Faturamento por Período
+              </h5>
+            </div>
+            <div className="p-3">
+              <HighchartsReact highcharts={Highcharts} options={vendasOptions} />
+            </div>
+          </div>
+        </div>
+        <div className="col-lg-5">
+          <div className="card-premium">
+            <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--border-color)" }}>
+              <h5 className="fw-bold mb-0 d-flex align-items-center gap-2">
+                <i className="fas fa-chart-pie" style={{ color: "var(--primary-color)" }} />
+                Status das Compras
+              </h5>
+            </div>
+            <div className="p-3">
+              <HighchartsReact highcharts={Highcharts} options={statusOptions} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Mapa */}
+      <div className="row g-4 mb-4">
         <div className="col-12">
-          <HighchartsReact highcharts={Highcharts} constructorType={"mapChart"} options={mapOptions} />
+          <div className="card-premium">
+            <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--border-color)" }}>
+              <h5 className="fw-bold mb-0 d-flex align-items-center gap-2">
+                <i className="fas fa-map-marked-alt" style={{ color: "var(--primary-color)" }} />
+                Vendas por Estado
+              </h5>
+            </div>
+            <div className="p-3">
+              <HighchartsReact
+                highcharts={Highcharts}
+                constructorType={"mapChart"}
+                options={mapOptions}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

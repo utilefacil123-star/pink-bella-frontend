@@ -1,14 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listarProdutos, deletarProduto } from '../../controllers/produtoController';
+import { useToast } from '../../context/ToastContext';
 
 const BASE_URL = 'http://localhost:3000';
+
+function estoqueBadge(qtd) {
+  if (qtd === 0) return { cls: 'badge-status cancelado', texto: 'Sem estoque' };
+  if (qtd <= 5)  return { cls: 'badge-status pendente',  texto: `${qtd} un.` };
+  return               { cls: 'badge-status pago',       texto: `${qtd} un.` };
+}
 
 function Produtos() {
   const [produtos, setProdutos] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [busca, setBusca] = useState('');
   const navigate = useNavigate();
+  const { toast, confirm } = useToast();
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -16,21 +24,23 @@ function Produtos() {
       const dados = await listarProdutos();
       setProdutos(dados);
     } catch {
-      alert('Erro ao carregar produtos.');
+      toast.error('Erro ao carregar produtos.');
     } finally {
       setCarregando(false);
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { carregar(); }, [carregar]);
 
   const handleExcluir = async (produto) => {
-    if (!window.confirm(`Excluir "${produto.nome}"? Esta ação não pode ser desfeita.`)) return;
+    const ok = await confirm(`Excluir "${produto.nome}"? Esta ação não pode ser desfeita.`);
+    if (!ok) return;
     try {
       await deletarProduto(produto.id);
       setProdutos((prev) => prev.filter((p) => p.id !== produto.id));
+      toast.success(`"${produto.nome}" excluído com sucesso.`);
     } catch {
-      alert('Erro ao excluir produto.');
+      toast.error('Erro ao excluir produto.');
     }
   };
 
@@ -41,194 +51,143 @@ function Produtos() {
   const formatarMoeda = (v) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
-  const cardStyle = {
-    backgroundColor: 'var(--surface-color)',
-    borderRadius: '15px',
-    color: 'var(--text-color)',
-  };
-
-  const badgeEstoque = (qtd) => {
-    if (qtd === 0) return { bg: '#e74c3c', texto: 'Sem estoque' };
-    if (qtd <= 5)  return { bg: '#f39c12', texto: `${qtd} un.` };
-    return { bg: '#2ecc71', texto: `${qtd} un.` };
-  };
+  if (carregando) {
+    return (
+      <div className="loading-state">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Carregando...</span>
+        </div>
+        <span>Carregando produtos...</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="container-fluid p-0">
+    <div className="container-fluid py-2">
+
       {/* Cabeçalho */}
-      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-        <h1
-          className="fw-bold mb-0"
-          style={{ color: 'var(--text-color)', borderBottom: '2px solid var(--primary-color)', paddingBottom: '10px' }}
-        >
-          <i className="fas fa-box-open me-2" style={{ color: 'var(--primary-color)' }}></i>
-          Produtos
-        </h1>
-        <button
-          className="btn fw-bold"
-          style={{ backgroundColor: 'var(--primary-color)', color: 'white', borderRadius: '10px' }}
-          onClick={() => navigate('/produtos/novo')}
-        >
-          <i className="fas fa-plus me-2"></i> Novo Produto
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">
+            <i className="fas fa-box-open page-title-icon" />
+            Produtos
+          </h1>
+          <p className="page-subtitle">Gerencie o catálogo e o estoque da loja.</p>
+        </div>
+        <button className="btn-primary-brand" onClick={() => navigate('/produtos/novo')}>
+          <i className="fas fa-plus" /> Novo Produto
         </button>
       </div>
 
       {/* Busca */}
-      <div className="mb-3" style={{ maxWidth: '360px' }}>
-        <input
-          type="text"
-          className="form-control"
-          placeholder="Buscar por nome..."
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          style={{
-            backgroundColor: 'var(--background-color)',
-            color: 'var(--text-color)',
-            border: '1px solid var(--border-color)',
-            borderRadius: '8px',
-          }}
-        />
+      <div className="filters-bar">
+        <div style={{ maxWidth: 360 }}>
+          <label className="form-label">Buscar por nome</label>
+          <div className="input-group">
+            <span className="input-group-text"><i className="fas fa-search" /></span>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Nome do produto..."
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+            />
+          </div>
+        </div>
       </div>
 
-      {/* Conteúdo */}
-      <div className="card border-0 shadow-lg" style={cardStyle}>
+      {/* Lista */}
+      <div className="card-premium">
+        <div className="card-section-header">
+          <h5 className="card-section-title">
+            <i className="fas fa-list" style={{ color: 'var(--primary-color)' }} />
+            Lista de Produtos ({produtosFiltrados.length})
+          </h5>
+        </div>
+
         <div className="card-body p-0">
-          {carregando ? (
-            <div className="text-center py-5">
-              <div className="spinner-border" style={{ color: 'var(--primary-color)' }}></div>
-              <p className="mt-3" style={{ color: 'var(--text-color)' }}>Carregando produtos...</p>
-            </div>
-          ) : produtosFiltrados.length === 0 ? (
-            <div className="text-center py-5">
-              <i className="fas fa-box-open fa-3x mb-3" style={{ color: 'var(--primary-color)', opacity: 0.5 }}></i>
-              <p style={{ color: 'var(--text-color)' }}>
+          {produtosFiltrados.length === 0 ? (
+            <div className="empty-state">
+              <i className="fas fa-box-open empty-state-icon" />
+              <p className="empty-state-title">
                 {busca ? 'Nenhum produto encontrado para esta busca.' : 'Nenhum produto cadastrado ainda.'}
               </p>
               {!busca && (
-                <button
-                  className="btn fw-bold mt-2"
-                  style={{ backgroundColor: 'var(--primary-color)', color: 'white', borderRadius: '10px' }}
-                  onClick={() => navigate('/produtos/novo')}
-                >
-                  <i className="fas fa-plus me-2"></i> Cadastrar primeiro produto
+                <button className="btn-primary-brand mt-2" onClick={() => navigate('/produtos/novo')}>
+                  <i className="fas fa-plus" /> Cadastrar produto
                 </button>
               )}
             </div>
           ) : (
             <div className="table-responsive">
-              <table
-                className="table table-hover mb-0"
-                style={{
-                  '--bs-table-bg': 'var(--surface-color)',
-                  '--bs-table-color': 'var(--text-color)',
-                  '--bs-table-hover-bg': 'var(--background-color)',
-                }}
-              >
+              <table className="table table-premium table-hover">
                 <thead>
-                  <tr style={{ borderBottom: '2px solid var(--primary-color)' }}>
-                    <th style={{ color: 'var(--primary-color)', padding: '16px 20px' }}>Produto</th>
-                    <th style={{ color: 'var(--primary-color)', padding: '16px 20px' }}>Preço</th>
-                    <th style={{ color: 'var(--primary-color)', padding: '16px 20px' }}>Estoque</th>
-                    <th style={{ color: 'var(--primary-color)', padding: '16px 20px' }}>Dimensões (cm)</th>
-                    <th style={{ color: 'var(--primary-color)', padding: '16px 20px', textAlign: 'right' }}>Ações</th>
+                  <tr>
+                    <th>Produto</th>
+                    <th>Preço</th>
+                    <th>Estoque</th>
+                    <th>Dimensões (cm)</th>
+                    <th className="text-end">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
                   {produtosFiltrados.map((p) => {
-                    const badge = badgeEstoque(p.estoque);
+                    const badge = estoqueBadge(p.estoque);
                     return (
-                      <tr key={p.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                        {/* Produto */}
-                        <td style={{ padding: '14px 20px', verticalAlign: 'middle' }}>
-                          <div className="d-flex align-items-center gap-3">
+                      <tr key={p.id}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                             {p.imagem ? (
                               <img
                                 src={`${BASE_URL}${p.imagem}`}
                                 alt={p.nome}
                                 style={{
-                                  width: '52px',
-                                  height: '52px',
-                                  objectFit: 'cover',
-                                  borderRadius: '8px',
-                                  border: '2px solid var(--border-color)',
-                                  flexShrink: 0,
+                                  width: 48, height: 48, objectFit: 'cover',
+                                  borderRadius: 8, border: '1px solid var(--border-color)', flexShrink: 0,
                                 }}
                               />
                             ) : (
                               <div
                                 style={{
-                                  width: '52px',
-                                  height: '52px',
-                                  borderRadius: '8px',
+                                  width: 48, height: 48, borderRadius: 8,
                                   backgroundColor: 'var(--background-color)',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  flexShrink: 0,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                                 }}
                               >
-                                <i className="fas fa-image" style={{ color: 'var(--border-color)', fontSize: '1.4rem' }}></i>
+                                <i className="fas fa-image" style={{ color: 'var(--border-color)', fontSize: '1.2rem' }} />
                               </div>
                             )}
                             <div>
-                              <div className="fw-semibold">{p.nome}</div>
+                              <div style={{ fontWeight: 600 }}>{p.nome}</div>
                               {p.descricao && (
-                                <div
-                                  className="text-muted"
-                                  style={{ fontSize: '0.8rem', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                                >
+                                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                   {p.descricao}
                                 </div>
                               )}
                             </div>
                           </div>
                         </td>
-
-                        {/* Preço */}
-                        <td style={{ padding: '14px 20px', verticalAlign: 'middle', fontWeight: '600' }}>
+                        <td style={{ fontWeight: 700, color: 'var(--status-success)' }}>
                           {formatarMoeda(p.preco)}
                         </td>
-
-                        {/* Estoque */}
-                        <td style={{ padding: '14px 20px', verticalAlign: 'middle' }}>
-                          <span
-                            className="badge rounded-pill fw-bold"
-                            style={{ backgroundColor: badge.bg, color: 'white', padding: '6px 12px' }}
-                          >
-                            {badge.texto}
-                          </span>
+                        <td>
+                          <span className={badge.cls}>{badge.texto}</span>
                         </td>
-
-                        {/* Dimensões */}
-                        <td style={{ padding: '14px 20px', verticalAlign: 'middle', fontSize: '0.85rem', color: 'var(--text-color)', opacity: 0.8 }}>
+                        <td style={{ color: 'var(--text-muted)', fontSize: '0.83rem' }}>
                           {p.altura || p.largura || p.comprimento
                             ? `${p.altura ?? '—'} × ${p.largura ?? '—'} × ${p.comprimento ?? '—'}`
-                            : '—'
-                          }
-                          {p.peso ? <div style={{ fontSize: '0.78rem' }}>{p.peso} g</div> : null}
+                            : '—'}
+                          {p.peso && <div style={{ fontSize: '0.75rem' }}>{p.peso} g</div>}
                         </td>
-
-                        {/* Ações */}
-                        <td style={{ padding: '14px 20px', verticalAlign: 'middle', textAlign: 'right' }}>
-                          <button
-                            className="btn btn-sm fw-bold me-2"
-                            style={{
-                              backgroundColor: 'var(--secondary-color)',
-                              color: 'var(--surface-color)',
-                              borderRadius: '8px',
-                              minWidth: '80px',
-                            }}
-                            onClick={() => navigate(`/produtos/editar/${p.id}`)}
-                          >
-                            <i className="fas fa-edit me-1"></i> Editar
-                          </button>
-                          <button
-                            className="btn btn-sm fw-bold"
-                            style={{ backgroundColor: '#e74c3c', color: 'white', borderRadius: '8px', minWidth: '80px' }}
-                            onClick={() => handleExcluir(p)}
-                          >
-                            <i className="fas fa-trash me-1"></i> Excluir
-                          </button>
+                        <td className="text-end">
+                          <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                            <button className="btn-ghost" onClick={() => navigate(`/produtos/editar/${p.id}`)} title="Editar">
+                              <i className="fas fa-edit" />
+                            </button>
+                            <button className="btn-ghost danger" onClick={() => handleExcluir(p)} title="Excluir">
+                              <i className="fas fa-trash" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -238,11 +197,9 @@ function Produtos() {
             </div>
           )}
         </div>
-        {!carregando && produtosFiltrados.length > 0 && (
-          <div
-            className="card-footer text-muted"
-            style={{ backgroundColor: 'var(--surface-color)', borderTop: '1px solid var(--border-color)', borderRadius: '0 0 15px 15px', padding: '10px 20px', fontSize: '0.85rem' }}
-          >
+
+        {produtosFiltrados.length > 0 && (
+          <div style={{ padding: '10px 20px', borderTop: '1px solid var(--border-color)', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
             {produtosFiltrados.length} produto{produtosFiltrados.length !== 1 ? 's' : ''} encontrado{produtosFiltrados.length !== 1 ? 's' : ''}
           </div>
         )}

@@ -2,87 +2,78 @@
 
 import React, { createContext, useState, useEffect, useContext } from 'react';
 
-// 1. Cria o Contexto
 const ThemeContext = createContext();
 
-// Cores base do Pink Bella
 const themes = {
-    'pink-dark': {
-        // Cores para o tema Escuro/Rosa principal
-        '--background-color': '#1E1E1E',
-        '--surface-color': '#2C2C2C', // Cor dos cards
-        '--text-color': '#E0E0E0',
-        '--primary-color': '#D81B60', // Rosa Escuro (Destaque)
-        '--secondary-color': '#FFB6C1', // Rosa Claro (Acento)
-        '--sidebar-bg': '#1E1E1E',
-        '--sidebar-active-bg': 'linear-gradient(90deg, #D81B60, #1E1E1E)', // Gradiente da Sidebar
-    },
-    'pink-light': {
-        // Cores para um tema Claro/Rosa
-        '--background-color': '#F8F9FA',
-        '--surface-color': '#FFFFFF', 
-        '--text-color': '#212529',
-        '--primary-color': '#FF69B4', // Rosa mais Claro
-        '--secondary-color': '#D81B60', // Rosa Escuro
-        '--sidebar-bg': '#FFFFFF',
-        '--sidebar-active-bg': 'linear-gradient(90deg, #FF69B4, #FFFFFF)',
-    },
-    'dark-blue': {
-        // Exemplo de tema Escuro/Azul
-        '--background-color': '#1E1E1E',
-        '--surface-color': '#2C2C2C', 
-        '--text-color': '#E0E0E0',
-        '--primary-color': '#3498db', // Azul Principal
-        '--secondary-color': '#00f2fe',
-        '--sidebar-bg': '#1E1E1E',
-        '--sidebar-active-bg': 'linear-gradient(90deg, #3498db, #1E1E1E)',
-    }
+  'pink-dark': {
+    '--background-color': '#111214',
+    '--surface-color': '#1e2022',
+    '--text-color': '#f3f4f6',
+    '--text-muted': '#9ca3af',
+    '--primary-color': '#d81b60',
+    '--secondary-color': '#ffb6c1',
+    '--border-color': 'rgba(255, 255, 255, 0.08)',
+    '--sidebar-bg': '#1a1c1e',
+    '--sidebar-active-bg': 'linear-gradient(135deg, #d81b60, #1a1c1e)',
+    storeName: 'Pink Bella CRM',
+    logoUrl: null,
+  },
+  'pink-light': {
+    '--background-color': '#f5f5f7',
+    '--surface-color': '#ffffff',
+    '--text-color': '#111827',
+    '--text-muted': '#6b7280',
+    '--primary-color': '#e91e8c',
+    '--secondary-color': '#d81b60',
+    '--border-color': 'rgba(0, 0, 0, 0.08)',
+    '--sidebar-bg': '#ffffff',
+    '--sidebar-active-bg': 'linear-gradient(135deg, #e91e8c, #ffe4f0)',
+    storeName: 'Pink Bella Light',
+    logoUrl: null,
+  },
+  'dark-blue': {
+    '--background-color': '#0f172a',
+    '--surface-color': '#1e293b',
+    '--text-color': '#f8fafc',
+    '--text-muted': '#94a3b8',
+    '--primary-color': '#3b82f6',
+    '--secondary-color': '#60a5fa',
+    '--border-color': 'rgba(255, 255, 255, 0.07)',
+    '--sidebar-bg': '#1e293b',
+    '--sidebar-active-bg': 'linear-gradient(135deg, #3b82f6, #1e293b)',
+    storeName: 'Blue Bella CRM',
+    logoUrl: null,
+  },
 };
 
-// 2. Cria o Provider
 export const ThemeProvider = ({ children }) => {
-    // Tenta carregar o tema do LocalStorage ou usa o 'pink-dark' como padrão
-    const [currentThemeKey, setCurrentThemeKey] = useState(
-        localStorage.getItem('themeKey') || 'pink-dark'
-    );
-    
-    // Objeto do tema atual
-    const currentTheme = themes[currentThemeKey];
+  const [currentThemeKey, setCurrentThemeKey] = useState(
+    localStorage.getItem('themeKey') || 'pink-dark'
+  );
 
-    // 3. Aplica as variáveis CSS ao <body> sempre que o tema mudar
-    useEffect(() => {
-        // Salva a chave do tema no LocalStorage para persistência
-        localStorage.setItem('themeKey', currentThemeKey);
-        
-        // Aplica as variáveis CSS ao elemento <body>
-        const root = document.body;
-        
-        // Remove as variáveis antigas (opcional, mas garante limpeza)
-        // for (const key in themes['pink-dark']) {
-        //     root.style.removeProperty(key);
-        // }
+  const currentTheme = themes[currentThemeKey] || themes['pink-dark'];
 
-        // Aplica as novas variáveis
-        for (const [key, value] of Object.entries(currentTheme)) {
-            root.style.setProperty(key, value);
-        }
-    }, [currentThemeKey, currentTheme]);
-    
-    // Função para trocar o tema
-    const changeTheme = (key) => {
-        if (themes[key]) {
-            setCurrentThemeKey(key);
-        }
-    };
+  useEffect(() => {
+    localStorage.setItem('themeKey', currentThemeKey);
 
-    return (
-        <ThemeContext.Provider value={{ currentThemeKey, currentTheme, changeTheme, themes }}>
-            {children}
-        </ThemeContext.Provider>
-    );
+    const root = document.documentElement;
+    for (const [key, value] of Object.entries(currentTheme)) {
+      if (key.startsWith('--')) {
+        root.style.setProperty(key, value);
+        document.body.style.setProperty(key, value);
+      }
+    }
+  }, [currentThemeKey, currentTheme]);
+
+  const changeTheme = (key) => {
+    if (themes[key]) setCurrentThemeKey(key);
+  };
+
+  return (
+    <ThemeContext.Provider value={{ currentThemeKey, currentTheme, changeTheme, themes }}>
+      {children}
+    </ThemeContext.Provider>
+  );
 };
 
-// 4. Cria o Hook Customizado para consumo
-export const useTheme = () => {
-    return useContext(ThemeContext);
-};
+export const useTheme = () => useContext(ThemeContext);

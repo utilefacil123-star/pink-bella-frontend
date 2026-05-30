@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { buscarCompraPorId } from '../../controllers/compraController';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid } from 'recharts';
+import { useToast } from '../../context/ToastContext';
 
 // Funções utilitárias
 const formatCurrency = (value) => {
@@ -571,6 +572,7 @@ const OrderHistoryTable = ({ orders, onSelectOrder }) => {
 // Componente Principal Refatorado
 function DetalheCompra() {
   const { id } = useParams();
+  const { toast } = useToast();
   const [compra, setCompra] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [filtroAtual, setFiltroAtual] = useState({
@@ -585,7 +587,7 @@ function DetalheCompra() {
   const copiarRastreio = () => {
     if (compra?.codigo_rastreio) {
       navigator.clipboard.writeText(compra.codigo_rastreio);
-      alert('Link de rastreio copiado!');
+      toast.success('Link de rastreio copiado!');
     }
   };
 
@@ -611,7 +613,7 @@ function DetalheCompra() {
       link.click();
       
       URL.revokeObjectURL(url);
-      alert('Dados exportados com sucesso!');
+      toast.success('Dados exportados com sucesso!');
     }
   };
 

@@ -3,10 +3,12 @@ import { useParams, useNavigate } from "react-router-dom";
 import { buscarCompraPorId, calcularFrete, atualizarCompra } from "../../controllers/compraController";
 import { listarClientes } from "../../controllers/clienteController";
 import { listarProdutos } from "../../controllers/produtoController";
+import { useToast } from "../../context/ToastContext";
 
 function EditarCompra() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const [clientes, setClientes] = useState([]);
   const [produtos, setProdutos] = useState([]);
@@ -38,7 +40,7 @@ function EditarCompra() {
         const produtosData = await listarProdutos();
         setProdutos(produtosData);
       } catch (error) {
-        alert("Erro ao carregar dados da compra.");
+        toast.error("Erro ao carregar dados da compra.");
       } finally {
         setLoading(false);
       }
@@ -47,15 +49,12 @@ function EditarCompra() {
     carregarDados();
   }, [id]);
 
-  // Função para buscar o endereço via CEP
   const buscarCep = async (cep) => {
     const cepLimpo = cep.replace(/\D/g, "");
-
     if (cepLimpo.length === 8) {
       try {
         const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
         const data = await response.json();
-
         if (!data.erro) {
           setEndereco((prev) => ({
             ...prev,
@@ -65,10 +64,10 @@ function EditarCompra() {
             estado: data.uf || "",
           }));
         } else {
-          alert("CEP não encontrado. Preencha o endereço manualmente.");
+          toast.warning("CEP não encontrado. Preencha o endereço manualmente.");
         }
       } catch (err) {
-        alert("Erro ao buscar CEP.");
+        toast.error("Erro ao buscar CEP.");
       }
     }
   };
@@ -144,7 +143,7 @@ function EditarCompra() {
         setFreteSelecionado(response.opcoes_frete[0]);
       }
     } catch {
-      alert("Erro ao calcular frete.");
+      toast.error("Erro ao calcular frete.");
     }
   }
 
@@ -157,16 +156,11 @@ function EditarCompra() {
     e.preventDefault();
     setSalvando(true);
     try {
-      // Calcula o total dos produtos
-const valorProdutos = itensCompra.reduce((total, item) => {
-  return total + item.preco_unitario * item.quantidade;
-}, 0);
-
-// Pega o frete ou 0 se não tiver
-const valorFrete = freteSelecionado?.preco_frete || 0;
-
-// Soma tudo
-const valor_total = valorProdutos + valorFrete;
+      const valorProdutos = itensCompra.reduce((total, item) => {
+        return total + item.preco_unitario * item.quantidade;
+      }, 0);
+      const valorFrete = freteSelecionado?.preco_frete || 0;
+      const valor_total = valorProdutos + valorFrete;
 
       const payload = {
         cliente_id: clienteSelecionado?.id,
@@ -183,196 +177,347 @@ const valor_total = valorProdutos + valorFrete;
         valor_total,
       };
       await atualizarCompra(id, payload);
-      alert("Compra atualizada com sucesso!");
+      toast.success("Compra atualizada com sucesso!");
       navigate("/compras");
     } catch (error) {
-      alert("Erro ao salvar compra.");
+      toast.error("Erro ao salvar compra.");
     } finally {
       setSalvando(false);
     }
   }
 
-  if (loading) return <p>Carregando...</p>;
+  if (loading) {
+    return (
+      <div className="d-flex align-items-center justify-content-center" style={{ minHeight: "300px" }}>
+        <div className="text-center">
+          <span className="spinner-border" style={{ color: "var(--primary-color)", width: "3rem", height: "3rem" }} />
+          <p className="text-muted mt-3">Carregando compra...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="container mt-4">
-      <h2>Editar Compra #{id}</h2>
+    <div className="container-fluid py-3">
+      {/* Page Header */}
+      <div className="d-flex align-items-center mb-4 gap-3">
+        <button
+          type="button"
+          className="btn btn-sm border-0"
+          style={{ color: "var(--text-color)", backgroundColor: "var(--surface-color)", borderRadius: "var(--radius-md)" }}
+          onClick={() => navigate("/compras")}
+        >
+          <i className="fas fa-arrow-left" />
+        </button>
+        <div>
+          <h1 className="fw-bold mb-0" style={{ color: "var(--text-color)", fontSize: "1.6rem" }}>
+            <i className="fas fa-edit me-2" style={{ color: "var(--primary-color)" }} />
+            Editar Compra <span style={{ color: "var(--primary-color)" }}>#{id}</span>
+          </h1>
+          <p className="text-muted small mb-0">Altere os dados da compra e salve as modificações.</p>
+        </div>
+      </div>
 
       <form onSubmit={handleSalvar}>
-        {/* Cliente */}
-        <div className="mb-3">
-          <label className="form-label">Cliente</label>
-          <select
-            className="form-select"
-            value={clienteSelecionado?.id || ""}
-            onChange={handleClienteChange}
-            required
-          >
-            <option value="">Selecione um cliente</option>
-            {clientes.map(c => (
-              <option key={c.id} value={c.id}>{c.nome} (ID: {c.id})</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Endereço */}
-        <h4>Endereço de Entrega</h4>
-        <div className="row g-3 mb-3">
-          <div className="col-md-3">
-            <input
-              type="text"
-              className="form-control"
-              name="cep"
-              placeholder="CEP"
-              value={endereco.cep || ""}
-              onChange={handleEnderecoChange}
-              required
-            />
+        {/* Seção: Cliente */}
+        <div className="card-premium mb-4">
+          <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--border-color)" }}>
+            <h5 className="fw-bold mb-0 d-flex align-items-center gap-2">
+              <i className="fas fa-user" style={{ color: "var(--primary-color)" }} />
+              Cliente
+            </h5>
           </div>
-          <div className="col-md-6">
-            <input
-              type="text"
-              className="form-control"
-              name="logradouro"
-              placeholder="Logradouro"
-              value={endereco.logradouro || ""}
-              onChange={handleEnderecoChange}
+          <div className="p-4">
+            <label className="form-label fw-semibold" style={{ color: "var(--text-color)" }}>
+              Selecionar Cliente <span style={{ color: "var(--status-danger)" }}>*</span>
+            </label>
+            <select
+              className="form-select"
+              value={clienteSelecionado?.id || ""}
+              onChange={handleClienteChange}
               required
-            />
-          </div>
-          <div className="col-md-3">
-            <input
-              type="text"
-              className="form-control"
-              name="numero"
-              placeholder="Número"
-              value={endereco.numero || ""}
-              onChange={handleEnderecoChange}
-              required
-            />
-          </div>
-          <div className="col-md-6">
-            <input
-              type="text"
-              className="form-control"
-              name="complemento"
-              placeholder="Complemento"
-              value={endereco.complemento || ""}
-              onChange={handleEnderecoChange}
-            />
-          </div>
-          <div className="col-md-6">
-            <input
-              type="text"
-              className="form-control"
-              name="bairro"
-              placeholder="Bairro"
-              value={endereco.bairro || ""}
-              onChange={handleEnderecoChange}
-              required
-            />
-          </div>
-          <div className="col-md-6">
-            <input
-              type="text"
-              className="form-control"
-              name="cidade"
-              placeholder="Cidade"
-              value={endereco.cidade || ""}
-              onChange={handleEnderecoChange}
-              required
-            />
-          </div>
-          <div className="col-md-3">
-            <input
-              type="text"
-              className="form-control"
-              name="estado"
-              placeholder="Estado"
-              value={endereco.estado || ""}
-              onChange={handleEnderecoChange}
-              required
-            />
+            >
+              <option value="">Selecione um cliente</option>
+              {clientes.map(c => (
+                <option key={c.id} value={c.id}>{c.nome} — ID #{c.id}</option>
+              ))}
+            </select>
           </div>
         </div>
 
-        {/* Itens */}
-        <h4>Produtos</h4>
-        {itensCompra.map((item, index) => (
-          <div key={index} className="row mb-3 align-items-end border p-3 rounded">
-            <div className="col-md-6">
-              <label className="form-label">Produto</label>
-              <select
-                className="form-select"
-                value={item.produto_id || ""}
-                onChange={(e) => handleProdutoChange(index, e.target.value)}
-                required
-              >
-                <option value="">Selecione um produto</option>
-                {produtos.map(produto => (
-                  <option key={produto.id} value={produto.id}>
-                    {produto.nome} (R$ {produto.preco.toFixed(2)})
-                  </option>
-                ))}
-              </select>
+        {/* Seção: Endereço */}
+        <div className="card-premium mb-4">
+          <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--border-color)" }}>
+            <h5 className="fw-bold mb-0 d-flex align-items-center gap-2">
+              <i className="fas fa-map-marker-alt" style={{ color: "var(--primary-color)" }} />
+              Endereço de Entrega
+            </h5>
+          </div>
+          <div className="p-4">
+            <div className="row g-3">
+              <div className="col-md-3">
+                <label className="form-label fw-semibold" style={{ color: "var(--text-color)" }}>
+                  CEP <span style={{ color: "var(--status-danger)" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="cep"
+                  placeholder="00000-000"
+                  value={endereco.cep || ""}
+                  onChange={handleEnderecoChange}
+                  required
+                />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold" style={{ color: "var(--text-color)" }}>
+                  Logradouro <span style={{ color: "var(--status-danger)" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="logradouro"
+                  placeholder="Rua, Avenida..."
+                  value={endereco.logradouro || ""}
+                  onChange={handleEnderecoChange}
+                  required
+                />
+              </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold" style={{ color: "var(--text-color)" }}>
+                  Número <span style={{ color: "var(--status-danger)" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="numero"
+                  placeholder="123"
+                  value={endereco.numero || ""}
+                  onChange={handleEnderecoChange}
+                  required
+                />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold" style={{ color: "var(--text-color)" }}>Complemento</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="complemento"
+                  placeholder="Apto, Bloco..."
+                  value={endereco.complemento || ""}
+                  onChange={handleEnderecoChange}
+                />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold" style={{ color: "var(--text-color)" }}>
+                  Bairro <span style={{ color: "var(--status-danger)" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="bairro"
+                  placeholder="Bairro"
+                  value={endereco.bairro || ""}
+                  onChange={handleEnderecoChange}
+                  required
+                />
+              </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold" style={{ color: "var(--text-color)" }}>
+                  Cidade <span style={{ color: "var(--status-danger)" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="cidade"
+                  placeholder="Cidade"
+                  value={endereco.cidade || ""}
+                  onChange={handleEnderecoChange}
+                  required
+                />
+              </div>
+              <div className="col-md-1">
+                <label className="form-label fw-semibold" style={{ color: "var(--text-color)" }}>
+                  UF <span style={{ color: "var(--status-danger)" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="estado"
+                  placeholder="SP"
+                  value={endereco.estado || ""}
+                  onChange={handleEnderecoChange}
+                  required
+                  maxLength="2"
+                />
+              </div>
             </div>
-            <div className="col-md-4">
-              <label className="form-label">Quantidade</label>
-              <input
-                type="number"
-                className="form-control"
-                min="1"
-                value={item.quantidade}
-                onChange={(e) => handleQuantidadeChange(item.produto_id, e.target.value)}
-                required
-              />
-            </div>
-            <div className="col-md-2 text-end">
-              {itensCompra.length > 1 && (
-                <button
-                  type="button"
-                  className="btn btn-outline-danger btn-sm"
-                  onClick={() => handleRemoveItem(item.produto_id)}
+          </div>
+        </div>
+
+        {/* Seção: Produtos */}
+        <div className="card-premium mb-4">
+          <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--border-color)" }}>
+            <h5 className="fw-bold mb-0 d-flex align-items-center gap-2">
+              <i className="fas fa-box" style={{ color: "var(--primary-color)" }} />
+              Produtos da Compra
+            </h5>
+          </div>
+          <div className="p-4">
+            <div className="d-flex flex-column gap-3">
+              {itensCompra.map((item, index) => (
+                <div
+                  key={index}
+                  className="row align-items-end g-3 p-3 rounded"
+                  style={{ border: "1px solid var(--border-color)", backgroundColor: "var(--background-color)" }}
                 >
-                  Remover
-                </button>
-              )}
+                  <div className="col-md-6">
+                    <label className="form-label fw-semibold" style={{ color: "var(--text-color)" }}>Produto</label>
+                    <select
+                      className="form-select"
+                      value={item.produto_id || ""}
+                      onChange={(e) => handleProdutoChange(index, e.target.value)}
+                      required
+                    >
+                      <option value="">Selecione um produto</option>
+                      {produtos.map(produto => (
+                        <option key={produto.id} value={produto.id}>
+                          {produto.nome} (R$ {produto.preco.toFixed(2)})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label fw-semibold" style={{ color: "var(--text-color)" }}>Quantidade</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      min="1"
+                      value={item.quantidade}
+                      onChange={(e) => handleQuantidadeChange(item.produto_id, e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="col-md-2 text-end">
+                    {itensCompra.length > 1 && (
+                      <button
+                        type="button"
+                        className="btn btn-sm fw-bold px-3 py-2"
+                        style={{
+                          backgroundColor: "rgba(239,68,68,0.1)",
+                          color: "var(--status-danger)",
+                          border: "1px solid rgba(239,68,68,0.3)",
+                          borderRadius: "var(--radius-sm)"
+                        }}
+                        onClick={() => handleRemoveItem(item.produto_id)}
+                      >
+                        <i className="fas fa-trash" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
+
+            <button
+              type="button"
+              className="btn-secondary-brand mt-3 px-4 py-2"
+              onClick={handleAddItem}
+            >
+              <i className="fas fa-plus me-2" />
+              Adicionar Item
+            </button>
           </div>
-        ))}
-        <div className="mb-3">
-          <button type="button" className="btn btn-secondary" onClick={handleAddItem}>
-            Adicionar Mais Itens
+        </div>
+
+        {/* Seção: Opções de Frete */}
+        <div className="card-premium mb-4">
+          <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--border-color)" }}>
+            <h5 className="fw-bold mb-0 d-flex align-items-center gap-2">
+              <i className="fas fa-truck" style={{ color: "var(--primary-color)" }} />
+              Opções de Frete
+            </h5>
+          </div>
+          <div className="p-4">
+            {opcoesFrete.length === 0 ? (
+              <div
+                className="text-center py-4 rounded"
+                style={{ backgroundColor: "var(--background-color)", border: "1px dashed var(--border-color)" }}
+              >
+                <i className="fas fa-truck fa-2x text-muted mb-2" style={{ opacity: 0.4 }} />
+                <p className="text-muted mb-0 small">Nenhuma opção de frete disponível para este endereço.</p>
+              </div>
+            ) : (
+              <div className="row g-3">
+                {opcoesFrete.map(opcao => {
+                  const selecionado = freteSelecionado?.id_servico === opcao.id_servico;
+                  return (
+                    <div key={opcao.id_servico} className="col-md-4 col-sm-6">
+                      <div
+                        onClick={() => setFreteSelecionado(opcao)}
+                        style={{
+                          cursor: "pointer",
+                          borderRadius: "var(--radius-md)",
+                          border: selecionado
+                            ? "2px solid var(--primary-color)"
+                            : "1px solid var(--border-color)",
+                          backgroundColor: selecionado
+                            ? "rgba(216,27,96,0.08)"
+                            : "var(--background-color)",
+                          padding: "16px",
+                          transition: "all 0.2s ease",
+                        }}
+                      >
+                        {selecionado && (
+                          <i className="fas fa-check-circle mb-2 d-block" style={{ color: "var(--primary-color)", fontSize: "1.1rem" }} />
+                        )}
+                        <div className="fw-bold" style={{ color: "var(--text-color)", fontSize: "0.95rem" }}>
+                          {opcao.nome_transportadora}
+                        </div>
+                        <div className="text-muted small mb-2">{opcao.servico}</div>
+                        <div className="d-flex justify-content-between align-items-center">
+                          <span className="small text-muted">
+                            <i className="fas fa-clock me-1" />
+                            {opcao.prazo_dias_uteis} dias úteis
+                          </span>
+                          <span className="fw-bold" style={{ color: "var(--primary-color)", fontSize: "1.05rem" }}>
+                            R$ {Number(opcao.preco_frete).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Botões de Ação */}
+        <div className="d-flex gap-3 flex-wrap">
+          <button type="submit" className="btn-primary-brand px-4 py-2" disabled={salvando}>
+            {salvando ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <i className="fas fa-save me-2" />
+                Salvar Alterações
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            className="btn-secondary-brand px-4 py-2"
+            onClick={() => navigate("/compras")}
+            disabled={salvando}
+          >
+            <i className="fas fa-times me-2" />
+            Cancelar
           </button>
         </div>
-
-        {/* Frete */}
-        <h4>Opções de Frete</h4>
-        {opcoesFrete.length === 0 && <p>Nenhuma opção de frete disponível</p>}
-        <ul className="list-group mb-3">
-          {opcoesFrete.map(opcao => (
-            <li
-              key={opcao.id_servico}
-              className={`list-group-item d-flex justify-content-between align-items-center ${freteSelecionado?.id_servico === opcao.id_servico ? "active" : ""}`}
-              onClick={() => setFreteSelecionado(opcao)}
-              style={{ cursor: "pointer" }}
-            >
-              <div>
-                {opcao.nome_transportadora} - {opcao.servico}
-                <br />
-                <small>{opcao.prazo_dias_uteis} dias úteis</small>
-              </div>
-              <span>R$ {opcao.preco_frete.toFixed(2)}</span>
-            </li>
-          ))}
-        </ul>
-
-        <button type="submit" className="btn btn-success" disabled={salvando}>
-          {salvando ? "Salvando..." : "Salvar Alterações"}
-        </button>
-        <button type="button" className="btn btn-secondary ms-2" onClick={() => navigate("/compras")} disabled={salvando}>
-          Cancelar
-        </button>
       </form>
     </div>
   );
