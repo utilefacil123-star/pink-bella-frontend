@@ -54,6 +54,7 @@ function EditarCompra() {
     }
 
     carregarDados();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const buscarCep = async (cep) => {
@@ -84,6 +85,7 @@ function EditarCompra() {
     if (cepLimpo?.length === 8) {
       buscarCep(endereco.cep);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [endereco.cep]);
 
   function handleEnderecoChange(e) {

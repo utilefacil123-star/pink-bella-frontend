@@ -180,12 +180,12 @@ function Produtos() {
                           {p.peso && <div style={{ fontSize: '0.75rem' }}>{p.peso} g</div>}
                         </td>
                         <td className="text-end">
-                          <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                            <button className="btn-ghost" onClick={() => navigate(`/produtos/editar/${p.id}`)} title="Editar">
-                              <i className="fas fa-edit" />
+                          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                            <button className="btn-ghost" onClick={() => navigate(`/produtos/editar/${p.id}`)}>
+                              <i className="fas fa-edit" /> Editar
                             </button>
-                            <button className="btn-ghost danger" onClick={() => handleExcluir(p)} title="Excluir">
-                              <i className="fas fa-trash" />
+                            <button className="btn-ghost danger" onClick={() => handleExcluir(p)}>
+                              <i className="fas fa-trash" /> Excluir
                             </button>
                           </div>
                         </td>

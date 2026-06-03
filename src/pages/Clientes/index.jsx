@@ -211,27 +211,25 @@ function Clientes() {
                           </span>
                         </td>
                         <td>
-                          <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                          <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
                             <button
                               className="btn-ghost"
                               onClick={() => navigate(`/clientes/editar/${cliente.id}`)}
-                              title="Editar"
                             >
-                              <i className="fas fa-edit" />
+                              <i className="fas fa-edit" /> Editar
                             </button>
                             <button
                               className={`btn-ghost ${cliente.ativo === 1 ? 'danger' : 'success'}`}
                               onClick={() => handleToggleStatus(cliente.id, cliente.ativo)}
-                              title={cliente.ativo === 1 ? 'Desativar' : 'Ativar'}
                             >
                               <i className={`fas ${cliente.ativo === 1 ? 'fa-user-times' : 'fa-user-check'}`} />
+                              {cliente.ativo === 1 ? 'Desativar' : 'Ativar'}
                             </button>
                             <button
                               className="btn-ghost primary"
                               onClick={() => navigate(`/compras/novo/${cliente.id}`)}
-                              title="Nova compra"
                             >
-                              <i className="fas fa-shopping-bag" />
+                              <i className="fas fa-shopping-bag" /> Compra
                             </button>
                           </div>
                         </td>

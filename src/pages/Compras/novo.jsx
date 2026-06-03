@@ -43,6 +43,7 @@ function NovaCompra() {
       }
     }
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clienteId]);
 
   const resetarFrete = () => {

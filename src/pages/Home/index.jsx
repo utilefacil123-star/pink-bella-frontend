@@ -158,7 +158,7 @@ function Home() {
         },
       ],
     }),
-    [filteredCompras]
+    [filteredCompras] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const mapOptions = useMemo(
