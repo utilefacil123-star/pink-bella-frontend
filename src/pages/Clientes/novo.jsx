@@ -80,7 +80,7 @@ function NovoCliente() {
       }
     }
     carregarClienteParaEdicao();
-  }, [id, navigate]);
+  }, [id, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleChange = (e) => {
     const { name, value } = e.target;

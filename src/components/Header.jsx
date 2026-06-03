@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 
 function Header({ onToggleDesktop, onToggleMobile }) {
-  const { currentTheme } = useTheme();
+  useTheme();
   const navigate = useNavigate();
 
   const usuario = useMemo(() => {
