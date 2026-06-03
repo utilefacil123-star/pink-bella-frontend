@@ -1,29 +1,43 @@
-import React, { createContext, useState, useEffect } from 'react';
-import {
-  listarCompras
-} from "../../controllers/compraController";
+import React, { createContext, useState, useCallback } from 'react';
+import { listarCompras } from "../../controllers/compraController";
 
 const CompraContext = createContext();
 
-const CompraProvider = ({ children }) => {
-  const [comprasT, setComprasT] = useState([]);
+const LIMIT = 20;
 
-  const carregarComprasT = async () => {
+const CompraProvider = ({ children }) => {
+  const [comprasT, setComprasT]     = useState([]);
+  const [paginacao, setPaginacao]   = useState({ total: 0, page: 1, totalPages: 1 });
+  const [filtros, setFiltros]       = useState({ status: 'Todos', search: '' });
+
+  const carregarComprasT = useCallback(async (page = 1, filtrosOverride) => {
     try {
-      const dados = await listarCompras();
-      setComprasT(dados);
+      const filtrosAtivos = filtrosOverride ?? filtros;
+      const dados = await listarCompras(page, LIMIT, filtrosAtivos);
+      setComprasT(dados.compras ?? []);
+      setPaginacao({ total: dados.total, page: dados.page, totalPages: dados.totalPages });
     } catch (err) {
       console.error("Erro ao carregar compras:", err);
     }
+  }, [filtros]);
+
+  const mudarPagina = (novaPagina) => {
+    carregarComprasT(novaPagina);
   };
 
-  useEffect(() => {
-    carregarComprasT();
-  }, []);
-
+  const mudarFiltros = (novosFiltros) => {
+    setFiltros(novosFiltros);
+    carregarComprasT(1, novosFiltros);
+  };
 
   return (
-    <CompraContext.Provider value={{ comprasT, setComprasT, carregarComprasT }}>
+    <CompraContext.Provider value={{
+      comprasT, setComprasT,
+      paginacao,
+      filtros, mudarFiltros,
+      carregarComprasT, mudarPagina,
+      LIMIT,
+    }}>
       {children}
     </CompraContext.Provider>
   );

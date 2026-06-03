@@ -24,15 +24,22 @@ function EditarCompra() {
     async function carregarDados() {
       try {
         const compraData = await buscarCompraPorId(id);
-        setClienteSelecionado(compraData.cliente);
-        setEndereco(compraData.endereco);
-        setItensCompra(compraData.itens.map(item => ({
+        const compra = compraData.compra_atual;
+        setClienteSelecionado(compra.cliente);
+        setEndereco(compra.endereco);
+        setItensCompra(compra.itens.map(item => ({
           produto_id: item.produto.id,
           nome: item.produto.nome,
           quantidade: item.quantidade,
           preco_unitario: item.preco_unitario_na_compra,
         })));
-        setFreteSelecionado(compraData.frete);
+        // Normaliza as propriedades do frete para o mesmo formato retornado pelo cálculo
+        setFreteSelecionado(compra.frete ? {
+          preco_frete: compra.frete.valor,
+          nome_transportadora: compra.frete.transportadora,
+          servico: compra.frete.servico,
+          prazo_dias_uteis: compra.frete.prazo_dias_uteis,
+        } : null);
 
         const clientesData = await listarClientes();
         setClientes(clientesData);

@@ -11,9 +11,11 @@ export async function criarCompra(compraData) {
   }
 }
 
-export async function listarCompras() {
+export async function listarCompras(page = 1, limit = 20, filtros = {}) {
   try {
-    const response = await api.get('/compras');
+    const response = await api.get('/compras', {
+      params: { page, limit, ...filtros },
+    });
     return response.data;
   } catch (error) {
     console.error('Erro ao listar compras:', error.response ? error.response.data : error.message);

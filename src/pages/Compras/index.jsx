@@ -15,20 +15,17 @@ import {
 } from "../../controllers/freteController";
 
 function Compras() {
-  const { comprasT, carregarComprasT } = useContext(CompraContext);
+  const { comprasT, carregarComprasT, paginacao, mudarPagina, filtros, mudarFiltros } = useContext(CompraContext);
   const navigate = useNavigate();
   const { toast, confirm } = useToast();
 
   const [compras, setCompras] = useState([]);
-  const [error, setError] = useState(null);    // eslint-disable-line no-unused-vars
-  const [message, setMessage] = useState(null); // eslint-disable-line no-unused-vars
   const [saldo, setSaldo] = useState(0);
   const [frete, setFrete] = useState(0);
   const [pagamentoPix, setPagamentoPix] = useState(null);
   const [verificandoPagamento, setVerificandoPagamento] = useState(false);
   const [selecionadas, setSelecionadas] = useState([]);
-  const [filtroStatus, setFiltroStatus] = useState("Todos");
-  const [filtroTexto, setFiltroTexto] = useState("");
+  const [filtroTextoLocal, setFiltroTextoLocal] = useState("");
   const [expanded, setExpanded] = useState({});
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printUrl, setPrintUrl] = useState("");
@@ -44,7 +41,7 @@ function Compras() {
   };
 
   useEffect(() => {
-    carregarComprasT();
+    carregarComprasT(1);
     carregarSaldo();
     atualizarRastreio();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -53,6 +50,15 @@ function Compras() {
   useEffect(() => {
     setCompras(comprasT);
   }, [comprasT]);
+
+  // Debounce para busca por texto
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      mudarFiltros({ ...filtros, search: filtroTextoLocal });
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtroTextoLocal]);
 
   const handleMarcarComoPago = async (compraId) => {
     try {
@@ -76,6 +82,16 @@ function Compras() {
       toast.success(`Compra #${compraId} cancelada.`);
     } catch {
       toast.error("Erro ao cancelar compra.");
+    }
+  };
+
+  const handleAdicionarAoCarrinho = async (compraId) => {
+    try {
+      await atualizarStatusCompra(compraId, "Pago");
+      await carregarComprasT();
+      toast.success(`Compra #${compraId} adicionada ao carrinho.`);
+    } catch {
+      toast.error("Erro ao adicionar compra ao carrinho Melhor Envio.");
     }
   };
 
@@ -157,20 +173,10 @@ function Compras() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [verificandoPagamento, frete]);
 
-  const comprasFiltradas = compras.filter((c) => {
-    const statusMatch = filtroStatus === "Todos" || c.status_compra === filtroStatus;
-    const textoMatch = filtroTexto === "" || (
-      (c.cliente && c.cliente.nome && c.cliente.nome.toLowerCase().includes(filtroTexto.toLowerCase())) ||
-      (c.cliente && c.cliente.cpf && c.cliente.cpf.includes(filtroTexto)) ||
-      (c.id && c.id.toString().includes(filtroTexto))
-    );
-    return statusMatch && textoMatch;
-  });
+  const comprasFiltradas = compras;
 
   const statusCounts = compras.reduce((acc, compra) => {
-    if (!acc[compra.status_compra]) {
-      acc[compra.status_compra] = 0;
-    }
+    if (!acc[compra.status_compra]) acc[compra.status_compra] = 0;
     acc[compra.status_compra]++;
     return acc;
   }, {});
@@ -285,7 +291,7 @@ function Compras() {
             </div>
           )
         ))}
-        {filtroTexto && statusCounts["Cancelado"] && (
+        {filtroTextoLocal && statusCounts["Cancelado"] && (
           <div className="col-lg-2 col-md-3 col-sm-4 col-6">
             <div className="card-premium h-100" style={{ borderLeft: "4px solid var(--status-danger)" }}>
               <div className="card-body text-center p-3">
@@ -386,14 +392,14 @@ function Compras() {
                 type="text"
                 className="form-control"
                 placeholder="Filtrar por Nome do Cliente, CPF ou ID da compra..."
-                value={filtroTexto}
-                onChange={(e) => setFiltroTexto(e.target.value)}
+                value={filtroTextoLocal}
+                onChange={(e) => setFiltroTextoLocal(e.target.value)}
               />
             </div>
             <div className="col-md-4">
               <select
-                value={filtroStatus}
-                onChange={(e) => setFiltroStatus(e.target.value)}
+                value={filtros.status}
+                onChange={(e) => mudarFiltros({ ...filtros, status: e.target.value })}
                 className="form-select"
               >
                 <option>Todos</option>
@@ -444,7 +450,7 @@ function Compras() {
         <div className="card-header py-3" style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: 'rgba(255,255,255,0.01)' }}>
           <h5 className="mb-0 fw-bold">
             <i className="fas fa-list me-2" style={{ color: 'var(--primary-color)' }}></i>
-            Lista de Compras ({comprasFiltradas.length})
+            Lista de Compras ({paginacao.total})
           </h5>
         </div>
         <div className="card-body p-0">
@@ -537,11 +543,57 @@ function Compras() {
                             </span>
                           </td>
                           <td className="text-center">
-                            <div className="d-flex gap-2 justify-content-center">
+                            <div className="d-flex gap-2 justify-content-center flex-wrap">
+                              {compra.status_compra === "Pendente" && (
+                                <button
+                                  className="btn btn-sm btn-success fw-bold"
+                                  style={{ borderRadius: '8px', fontSize: '0.75rem' }}
+                                  onClick={() => handleMarcarComoPago(compra.id)}
+                                >
+                                  <i className="fas fa-check me-1"></i>Marcar Pago
+                                </button>
+                              )}
+                              {compra.status_compra === "Pago" && (
+                                <button
+                                  className="btn btn-sm btn-warning fw-bold"
+                                  style={{ borderRadius: '8px', fontSize: '0.75rem' }}
+                                  onClick={() => handleAdicionarAoCarrinho(compra.id)}
+                                >
+                                  <i className="fas fa-shopping-cart me-1"></i>Carrinho
+                                </button>
+                              )}
+                              {compra.status_compra === "Aguardando Etiqueta" && (
+                                <button
+                                  className="btn btn-sm btn-primary fw-bold"
+                                  style={{ borderRadius: '8px', fontSize: '0.75rem' }}
+                                  onClick={() => handleGerarEtiquetaIndividual(compra)}
+                                >
+                                  <i className="fas fa-tag me-1"></i>Etiqueta
+                                </button>
+                              )}
+                              {compra.status_compra === "Etiqueta PDF Gerada" && (
+                                <button
+                                  className="btn btn-sm btn-info fw-bold"
+                                  style={{ borderRadius: '8px', fontSize: '0.75rem' }}
+                                  onClick={() => handleGerarLinkImpressao(compra.id)}
+                                >
+                                  <i className="fas fa-print me-1"></i>Imprimir
+                                </button>
+                              )}
+                              {!compra.codigo_etiqueta && !["Entregue","Postado","Cancelado"].includes(compra.status_compra) && (
+                                <button
+                                  className="btn btn-sm btn-outline-secondary border-0"
+                                  onClick={() => navigate(`/compras/editar/${compra.id}`)}
+                                  title="Editar compra"
+                                  style={{ color: 'var(--text-color)' }}
+                                >
+                                  <i className="fas fa-edit"></i>
+                                </button>
+                              )}
                               <button
                                 className="btn btn-sm btn-outline-secondary border-0"
                                 onClick={() => handleExpand(compra.id)}
-                                title={expanded[compra.id] ? "Recolher detalhes" : "Expandir detalhes"}
+                                title={expanded[compra.id] ? "Recolher" : "Mais detalhes"}
                                 style={{ color: 'var(--text-color)' }}
                               >
                                 <i className={`fas ${expanded[compra.id] ? "fa-chevron-up" : "fa-chevron-down"}`}></i>
@@ -665,6 +717,16 @@ function Compras() {
                                         </button>
                                       )}
 
+                                      {compra.status_compra === "Pago" && (
+                                        <button
+                                          className="btn btn-warning btn-sm fw-bold px-3 py-2"
+                                          style={{ borderRadius: "8px" }}
+                                          onClick={() => handleAdicionarAoCarrinho(compra.id)}
+                                        >
+                                          <i className="fas fa-shopping-cart me-1"></i> Adicionar ao Carrinho
+                                        </button>
+                                      )}
+
                                       {!compra.codigo_etiqueta && (
                                         <button
                                           className="btn btn-outline-secondary btn-sm fw-bold px-3 py-2"
@@ -779,6 +841,11 @@ function Compras() {
                               Marcar Pago
                             </button>
                           )}
+                          {compra.status_compra === "Pago" && (
+                            <button className="btn btn-warning btn-sm w-100" onClick={() => handleAdicionarAoCarrinho(compra.id)}>
+                              <i className="fas fa-shopping-cart me-1"></i> Adicionar ao Carrinho
+                            </button>
+                          )}
                           {compra.status_compra === "Aguardando Etiqueta" && (
                             <button className="btn btn-primary btn-sm w-100" onClick={() => handleGerarEtiquetaIndividual(compra)}>
                               Gerar Etiqueta
@@ -799,6 +866,43 @@ function Compras() {
           )}
         </div>
       </div>
+
+      {/* Paginação */}
+      {paginacao.totalPages > 1 && (
+        <div className="d-flex align-items-center justify-content-between px-2 py-3">
+          <span className="text-muted small">
+            Página <strong>{paginacao.page}</strong> de <strong>{paginacao.totalPages}</strong>
+            {' '}— {paginacao.total} compras no total
+          </span>
+          <div className="d-flex gap-2">
+            <button
+              className="btn btn-sm btn-outline-secondary"
+              disabled={paginacao.page <= 1}
+              onClick={() => mudarPagina(paginacao.page - 1)}
+            >
+              <i className="fas fa-chevron-left me-1"></i> Anterior
+            </button>
+            {Array.from({ length: paginacao.totalPages }, (_, i) => i + 1)
+              .filter(p => Math.abs(p - paginacao.page) <= 2)
+              .map(p => (
+                <button
+                  key={p}
+                  className={`btn btn-sm ${p === paginacao.page ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => mudarPagina(p)}
+                >
+                  {p}
+                </button>
+              ))}
+            <button
+              className="btn btn-sm btn-outline-secondary"
+              disabled={paginacao.page >= paginacao.totalPages}
+              onClick={() => mudarPagina(paginacao.page + 1)}
+            >
+              Próxima <i className="fas fa-chevron-right ms-1"></i>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Impressão */}
       {showPrintModal && (
