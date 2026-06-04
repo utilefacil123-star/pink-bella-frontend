@@ -1,4 +1,4 @@
-import React, { createContext, useState, useCallback } from 'react';
+import React, { createContext, useState, useCallback, useEffect } from 'react';
 import { listarCompras } from "../../controllers/compraController";
 
 const CompraContext = createContext();
@@ -20,6 +20,10 @@ const CompraProvider = ({ children }) => {
       console.error("Erro ao carregar compras:", err);
     }
   }, [filtros]);
+
+  useEffect(() => {
+    carregarComprasT(1);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const mudarPagina = (novaPagina) => {
     carregarComprasT(novaPagina);
