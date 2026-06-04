@@ -161,14 +161,15 @@ function Home() {
     [filteredCompras] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
+  // Mapa usa todas as compras carregadas (sem filtro de período)
   const vendasPorEstado = useMemo(() => {
     const contagem = {};
-    filteredCompras.forEach((c) => {
+    comprasT.forEach((c) => {
       const estado = c.endereco_entrega?.estado;
       if (estado) contagem[estado] = (contagem[estado] || 0) + 1;
     });
     return Object.entries(contagem).map(([sigla, value]) => ({ sigla, value }));
-  }, [filteredCompras]);
+  }, [comprasT]);
 
   const mapOptions = useMemo(
     () => ({
