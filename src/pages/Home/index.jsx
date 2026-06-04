@@ -161,23 +161,48 @@ function Home() {
     [filteredCompras] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
+  const vendasPorEstado = useMemo(() => {
+    const contagem = {};
+    filteredCompras.forEach((c) => {
+      const estado = c.endereco_entrega?.estado;
+      if (estado) contagem[estado] = (contagem[estado] || 0) + 1;
+    });
+    return Object.entries(contagem).map(([sigla, value]) => ({ sigla, value }));
+  }, [filteredCompras]);
+
   const mapOptions = useMemo(
     () => ({
       chart: { map: brazilMapData, backgroundColor: "transparent" },
       title: { text: "Vendas por Estado", style: { color: textColor, fontWeight: "700" } },
       credits: { enabled: false },
+      colorAxis: {
+        min: 0,
+        stops: [
+          [0, "#f8e4ef"],
+          [0.5, `${primaryColor}80`],
+          [1, primaryColor],
+        ],
+      },
+      tooltip: {
+        backgroundColor: surfaceColor,
+        borderColor: "rgba(255,255,255,0.1)",
+        style: { color: textColor },
+        formatter: function () {
+          return `<b>${this.point.properties?.nome || this.key}</b><br/>Vendas: ${this.point.value || 0}`;
+        },
+      },
       series: [
         {
           mapData: brazilMapData,
           joinBy: ["id", "sigla"],
           name: "Vendas",
-          data: [],
+          data: vendasPorEstado,
           states: { hover: { color: primaryColor } },
-          dataLabels: { enabled: true, format: "{point.name}", style: { color: textColor } },
+          dataLabels: { enabled: true, format: "{point.properties.nome}", style: { color: textColor, fontSize: "9px" } },
         },
       ],
     }),
-    [primaryColor, textColor] // eslint-disable-line react-hooks/exhaustive-deps
+    [vendasPorEstado, primaryColor, textColor, surfaceColor] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   // Indicadores
