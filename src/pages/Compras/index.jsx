@@ -642,9 +642,9 @@ function Compras() {
                                       <div className="d-flex flex-wrap gap-2 mt-2">
                                         {compra.itens?.map((item, idx) => (
                                           <div key={idx} className="badge-status p-2" style={{ backgroundColor: 'var(--surface-color)', textTransform: 'none' }}>
-                                            {item.quantidade}x {item.produto?.nome} 
+                                            {item.quantidade}x {item.produto?.nome}
                                             <span className="fw-bold ms-2" style={{ color: 'var(--primary-color)' }}>
-                                              (R$ {item.subtotal_item?.toFixed(2).replace(".", ",")})
+                                              (R$ {parseFloat(item.subtotal_item || 0).toFixed(2).replace(".", ",")})
                                             </span>
                                           </div>
                                         ))}
@@ -665,7 +665,7 @@ function Compras() {
                                           <p className="mb-1 small">
                                             <strong>Valor do Frete:</strong> 
                                             <span className="fw-bold text-success ms-1">
-                                              R$ {compra.frete.valor.toFixed(2).replace(".", ",")}
+                                              R$ {parseFloat(compra.frete.valor || 0).toFixed(2).replace(".", ",")}
                                             </span>
                                           </p>
                                           <p className="mb-0 small">
@@ -825,14 +825,14 @@ function Compras() {
                           <div className="mt-1">
                             {compra.itens?.map((item, idx) => (
                               <div key={idx} className="mb-1 text-white">
-                                {item.quantidade}x {item.produto?.nome} (R$ {item.subtotal_item?.toFixed(2).replace(".", ",")})
+                                {item.quantidade}x {item.produto?.nome} (R$ {parseFloat(item.subtotal_item || 0).toFixed(2).replace(".", ",")})
                               </div>
                             ))}
                           </div>
                         </div>
                         {compra.frete && (
                           <div className="mb-2 text-white-50 small border-top pt-2" style={{ borderColor: 'var(--border-color)' }}>
-                            <strong>Frete:</strong> {compra.frete.transportadora} - R$ {compra.frete.valor.toFixed(2).replace(".", ",")} ({compra.frete.prazo_frete_dias}d)
+                            <strong>Frete:</strong> {compra.frete.transportadora} - R$ {parseFloat(compra.frete.valor || 0).toFixed(2).replace(".", ",")} ({compra.frete.prazo_frete_dias}d)
                           </div>
                         )}
                         <div className="d-flex flex-wrap gap-2 mt-3 pt-2 border-top" style={{ borderColor: 'var(--border-color)' }}>
