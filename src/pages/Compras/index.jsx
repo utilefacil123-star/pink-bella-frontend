@@ -529,11 +529,11 @@ function Compras() {
                           </td>
                           <td>
                             <div className="fw-bold" style={{ color: 'var(--status-success)' }}>
-                              R$ {compra.valor_total?.toFixed(2).replace(".", ",")}
+                              R$ {parseFloat(compra.valor_total || 0).toFixed(2).replace(".", ",")}
                             </div>
                             {compra.frete?.valor && compra.status_compra === "Pago" && (
                               <span className="badge-status pago mt-1" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
-                                Frete: R$ {compra.frete.valor.toFixed(2).replace(".", ",")}
+                                Frete: R$ {parseFloat(compra.frete.valor || 0).toFixed(2).replace(".", ",")}
                               </span>
                             )}
                           </td>
@@ -797,7 +797,7 @@ function Compras() {
                       {compra.data_compra ? format(new Date(compra.data_compra), "dd/MM/yyyy HH:mm") : "-"}
                     </div>
                     <div className="fw-bold mb-3" style={{ color: 'var(--status-success)', fontSize: '1.1rem' }}>
-                      R$ {compra.valor_total?.toFixed(2).replace(".", ",")}
+                      R$ {parseFloat(compra.valor_total || 0).toFixed(2).replace(".", ",")}
                     </div>
                     
                     <div className="d-flex justify-content-end gap-2 border-top pt-2" style={{ borderColor: 'var(--border-color)' }}>

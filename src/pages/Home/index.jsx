@@ -69,7 +69,7 @@ function Home() {
     () =>
       filteredCompras.map((p) => ({
         date: new Date(p.data_compra).toLocaleDateString("pt-BR"),
-        faturamento: p.valor_total,
+        faturamento: parseFloat(p.valor_total) || 0,
         vendas: 1,
       })),
     [filteredCompras]
@@ -181,7 +181,7 @@ function Home() {
   );
 
   // Indicadores
-  const faturamentoTotal = filteredCompras.reduce((acc, compra) => acc + compra.valor_total, 0);
+  const faturamentoTotal = filteredCompras.reduce((acc, compra) => acc + (parseFloat(compra.valor_total) || 0), 0);
   const totalVendas = filteredCompras.length;
   const novosClientes = [...new Set(filteredCompras.map((c) => c.cliente?.id))].length;
   const comprasPendentes = filteredCompras.filter((c) => c.status_compra === "Pendente").length;

@@ -651,7 +651,7 @@ function DetalheCompra() {
 
     // Métricas
     const totalOrders = filteredOrders.length;
-    const totalValue = filteredOrders.reduce((sum, order) => sum + order.valor_total, 0);
+    const totalValue = filteredOrders.reduce((sum, order) => sum + (parseFloat(order.valor_total) || 0), 0);
     const totalItems = filteredOrders.reduce((sum, order) => {
       return sum + order.itens.reduce((itemSum, item) => itemSum + item.quantidade, 0);
     }, 0);
@@ -670,7 +670,7 @@ function DetalheCompra() {
     // Dados para gráficos
     const comprasAnterioresChartData = filteredOrders.map(comp => ({
       name: `Compra #${comp.id}`,
-      value: comp.valor_total,
+      value: parseFloat(comp.valor_total) || 0,
     }));
 
     const itensCompradosChartData = filteredOrders.reduce((acc, comp) => {
@@ -695,7 +695,7 @@ function DetalheCompra() {
       new Date(a.data_compra) - new Date(b.data_compra)
     ).map(order => ({
       name: formatDate(order.data_compra),
-      value: order.valor_total
+      value: parseFloat(order.valor_total) || 0
     }));
 
     // Análise Comportamental
