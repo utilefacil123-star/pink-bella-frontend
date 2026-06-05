@@ -216,8 +216,10 @@ function Home() {
           states: { hover: { color: primaryColor } },
           dataLabels: {
             enabled: true,
-            format: "{point.value}",
-            style: { color: "#fff", fontSize: "10px", fontWeight: "700", textOutline: "1px #00000080" },
+            formatter: function () {
+              return this.point.value > 0 ? this.point.value : null;
+            },
+            style: { color: "#fff", fontSize: "11px", fontWeight: "700", textOutline: "2px #000000aa" },
           },
         },
       ],
