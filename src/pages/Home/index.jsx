@@ -7,16 +7,101 @@ import { CompraContext } from "../Compras/CompraContext";
 // --- Gráficos com Highcharts ---
 import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
-import mapInit from "highcharts/modules/map";
-import proj4 from "proj4";
+
+// --- Mapa do Brasil ---
+import { ComposableMap, Geographies, Geography, Annotation } from "react-simple-maps";
+import { scaleLinear } from "d3-scale";
 import brazilMapData from "../../assets/brazil-topo.json";
 
-// Inicializa o módulo de mapa
-if (typeof mapInit === "function") {
-  mapInit(Highcharts);
-}
-if (typeof window !== "undefined") {
-  window.proj4 = window.proj4 || proj4;
+const ESTADOS_NOMES = {
+  AC:"Acre",AL:"Alagoas",AP:"Amapá",AM:"Amazonas",BA:"Bahia",CE:"Ceará",
+  DF:"Distrito Federal",ES:"Espírito Santo",GO:"Goiás",MA:"Maranhão",
+  MT:"Mato Grosso",MS:"Mato Grosso do Sul",MG:"Minas Gerais",PA:"Pará",
+  PB:"Paraíba",PR:"Paraná",PE:"Pernambuco",PI:"Piauí",RJ:"Rio de Janeiro",
+  RN:"Rio Grande do Norte",RS:"Rio Grande do Sul",RO:"Rondônia",RR:"Roraima",
+  SC:"Santa Catarina",SP:"São Paulo",SE:"Sergipe",TO:"Tocantins",
+};
+
+const CENTROIDS = {
+  AC:[-70.5,-9.0], AL:[-36.6,-9.5], AM:[-64.0,-4.0], AP:[-51.5,1.5],
+  BA:[-41.7,-13.0], CE:[-39.5,-5.0], DF:[-47.9,-15.8], ES:[-40.7,-19.5],
+  GO:[-49.8,-16.0], MA:[-44.5,-5.0], MG:[-44.5,-18.5], MS:[-54.5,-20.5],
+  MT:[-55.0,-14.0], PA:[-52.0,-4.5], PB:[-36.8,-7.2], PE:[-37.5,-8.5],
+  PI:[-43.0,-7.0], PR:[-51.5,-24.5], RJ:[-43.2,-22.9], RN:[-36.5,-5.8],
+  RO:[-63.0,-10.8], RR:[-61.5,2.0], RS:[-53.0,-30.0], SC:[-50.5,-27.2],
+  SE:[-37.4,-10.5], SP:[-48.5,-22.0], TO:[-48.3,-10.2],
+};
+
+function BrazilMap({ vendasPorEstado, primaryColor }) {
+  const [tooltip, setTooltip] = useState(null);
+  const vendasMap = Object.fromEntries(vendasPorEstado.map(({ id, value }) => [id, value]));
+  const maxVal = Math.max(...vendasPorEstado.map(d => d.value), 1);
+  const colorScale = scaleLinear().domain([0, maxVal]).range(["#f8e4ef", primaryColor]);
+
+  return (
+    <div style={{ position: "relative" }}>
+      <ComposableMap
+        projection="geoMercator"
+        projectionConfig={{ center: [-52, -14], scale: 750 }}
+        style={{ width: "100%", height: "auto" }}
+      >
+        <Geographies geography={brazilMapData}>
+          {({ geographies }) =>
+            geographies.map(geo => {
+              const sigla = geo.id;
+              const vendas = vendasMap[sigla] || 0;
+              return (
+                <Geography
+                  key={geo.rsmKey}
+                  geography={geo}
+                  fill={vendas > 0 ? colorScale(vendas) : "var(--surface-color, #2a2d30)"}
+                  stroke="var(--text-color)"
+                  strokeOpacity={0.25}
+                  strokeWidth={0.8}
+                  onMouseEnter={() => setTooltip({ sigla, vendas, nome: ESTADOS_NOMES[sigla] || sigla })}
+                  onMouseLeave={() => setTooltip(null)}
+                  style={{
+                    default: { outline: "none" },
+                    hover: { fill: primaryColor, outline: "none", cursor: "pointer", opacity: 0.85 },
+                    pressed: { outline: "none" },
+                  }}
+                />
+              );
+            })
+          }
+        </Geographies>
+        {vendasPorEstado.map(({ id, value }) =>
+          CENTROIDS[id] ? (
+            <Annotation
+              key={id}
+              subject={CENTROIDS[id]}
+              dx={0} dy={0}
+              connectorProps={{}}
+            >
+              <text
+                textAnchor="middle"
+                dominantBaseline="central"
+                style={{ fontSize: "10px", fontWeight: "700", fill: "#fff", pointerEvents: "none",
+                  textShadow: "0 0 3px #000, 0 0 3px #000" }}
+              >
+                {value}
+              </text>
+            </Annotation>
+          ) : null
+        )}
+      </ComposableMap>
+      {tooltip && (
+        <div style={{
+          position: "absolute", bottom: "12px", left: "50%", transform: "translateX(-50%)",
+          background: "var(--surface-color, #1e2022)", border: "1px solid rgba(255,255,255,0.1)",
+          borderRadius: "8px", padding: "6px 14px", pointerEvents: "none",
+          color: "var(--text-color, #f3f4f6)", fontSize: "0.85rem", whiteSpace: "nowrap",
+        }}>
+          <strong>{tooltip.nome}</strong> — {tooltip.vendas} {tooltip.vendas === 1 ? "venda" : "vendas"}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function Home() {
@@ -26,6 +111,16 @@ function Home() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [filterPeriod, setFilterPeriod] = useState("year");
   const [customRange, setCustomRange] = useState({ start: "", end: "" });
+  const [todasCompras, setTodasCompras] = useState([]);
+
+  // Busca todas as compras para métricas do dashboard (sem paginação)
+  useEffect(() => {
+    import("../../controllers/compraController").then(({ listarCompras }) => {
+      listarCompras(1, 9999, { status: "Todos", search: "" })
+        .then(dados => setTodasCompras(dados.compras ?? []))
+        .catch(() => {});
+    });
+  }, []);
 
   // Atualiza o relógio
   useEffect(() => {
@@ -41,10 +136,10 @@ function Home() {
   const formatCurrency = (value) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
-  // Compras filtradas
+  // Compras filtradas — usa todasCompras para métricas completas
   const filteredCompras = useMemo(() => {
     const now = new Date();
-    return comprasT.filter((c) => {
+    return todasCompras.filter((c) => {
       const compraDate = new Date(c.data_compra);
       if (filterPeriod === "day") return compraDate.toDateString() === now.toDateString();
       if (filterPeriod === "week") {
@@ -162,15 +257,6 @@ function Home() {
     [filteredCompras] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  const ESTADOS_NOMES = {
-    AC:"Acre",AL:"Alagoas",AP:"Amapá",AM:"Amazonas",BA:"Bahia",CE:"Ceará",
-    DF:"Distrito Federal",ES:"Espírito Santo",GO:"Goiás",MA:"Maranhão",
-    MT:"Mato Grosso",MS:"Mato Grosso do Sul",MG:"Minas Gerais",PA:"Pará",
-    PB:"Paraíba",PR:"Paraná",PE:"Pernambuco",PI:"Piauí",RJ:"Rio de Janeiro",
-    RN:"Rio Grande do Norte",RS:"Rio Grande do Sul",RO:"Rondônia",RR:"Roraima",
-    SC:"Santa Catarina",SP:"São Paulo",SE:"Sergipe",TO:"Tocantins",
-  };
-
   const vendasPorEstado = useMemo(() => {
     const contagem = {};
     filteredCompras.forEach((c) => {
@@ -185,47 +271,6 @@ function Home() {
       .sort((a, b) => b.value - a.value)
       .map(({ id, value }) => ({ sigla: id, nome: ESTADOS_NOMES[id] || id, value })),
   [vendasPorEstado]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const mapOptions = useMemo(
-    () => ({
-      chart: { map: brazilMapData, backgroundColor: "transparent" },
-      title: { text: "Vendas por Estado", style: { color: textColor, fontWeight: "700" } },
-      credits: { enabled: false },
-      colorAxis: {
-        min: 0,
-        stops: [
-          [0, "#f8e4ef"],
-          [0.5, `${primaryColor}80`],
-          [1, primaryColor],
-        ],
-      },
-      tooltip: {
-        backgroundColor: surfaceColor,
-        borderColor: "rgba(255,255,255,0.1)",
-        style: { color: textColor },
-        formatter: function () {
-          return `<b>${this.point.properties?.nome || this.key}</b><br/>Vendas: ${this.point.value || 0}`;
-        },
-      },
-      series: [
-        {
-          mapData: brazilMapData,
-          joinBy: "id",
-          name: "Vendas",
-          data: vendasPorEstado,
-          states: { hover: { color: primaryColor } },
-          dataLabels: {
-            enabled: true,
-            formatter: function () {
-              return this.point.value > 0 ? this.point.value : null;
-            },
-            style: { color: "#fff", fontSize: "11px", fontWeight: "700", textOutline: "2px #000000aa" },
-          },
-        },
-      ],
-    }),
-    [vendasPorEstado, primaryColor, textColor, surfaceColor] // eslint-disable-line react-hooks/exhaustive-deps
-  );
 
   // Indicadores
   const faturamentoTotal = filteredCompras.reduce((acc, compra) => acc + (parseFloat(compra.valor_total) || 0), 0);
@@ -593,10 +638,9 @@ function Home() {
               </h5>
             </div>
             <div className="p-3">
-              <HighchartsReact
-                highcharts={Highcharts}
-                constructorType={"mapChart"}
-                options={mapOptions}
+              <BrazilMap
+                vendasPorEstado={vendasPorEstado}
+                primaryColor={primaryColor}
               />
             </div>
           </div>
