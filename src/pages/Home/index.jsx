@@ -162,6 +162,15 @@ function Home() {
     [filteredCompras] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
+  const ESTADOS_NOMES = {
+    AC:"Acre",AL:"Alagoas",AP:"Amapá",AM:"Amazonas",BA:"Bahia",CE:"Ceará",
+    DF:"Distrito Federal",ES:"Espírito Santo",GO:"Goiás",MA:"Maranhão",
+    MT:"Mato Grosso",MS:"Mato Grosso do Sul",MG:"Minas Gerais",PA:"Pará",
+    PB:"Paraíba",PR:"Paraná",PE:"Pernambuco",PI:"Piauí",RJ:"Rio de Janeiro",
+    RN:"Rio Grande do Norte",RS:"Rio Grande do Sul",RO:"Rondônia",RR:"Roraima",
+    SC:"Santa Catarina",SP:"São Paulo",SE:"Sergipe",TO:"Tocantins",
+  };
+
   const vendasPorEstado = useMemo(() => {
     const contagem = {};
     filteredCompras.forEach((c) => {
@@ -170,6 +179,12 @@ function Home() {
     });
     return Object.entries(contagem).map(([id, value]) => ({ id, value }));
   }, [filteredCompras]);
+
+  const tabelaEstados = useMemo(() =>
+    [...vendasPorEstado]
+      .sort((a, b) => b.value - a.value)
+      .map(({ id, value }) => ({ sigla: id, nome: ESTADOS_NOMES[id] || id, value })),
+  [vendasPorEstado]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const mapOptions = useMemo(
     () => ({
@@ -199,7 +214,11 @@ function Home() {
           name: "Vendas",
           data: vendasPorEstado,
           states: { hover: { color: primaryColor } },
-          dataLabels: { enabled: true, format: "{point.properties.nome}", style: { color: textColor, fontSize: "9px" } },
+          dataLabels: {
+            enabled: true,
+            format: "{point.value}",
+            style: { color: "#fff", fontSize: "10px", fontWeight: "700", textOutline: "1px #00000080" },
+          },
         },
       ],
     }),
@@ -561,10 +580,10 @@ function Home() {
         </div>
       </div>
 
-      {/* Mapa */}
+      {/* Mapa + Tabela */}
       <div className="row g-4 mb-4">
-        <div className="col-12">
-          <div className="card-premium">
+        <div className="col-lg-8">
+          <div className="card-premium h-100">
             <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--border-color)" }}>
               <h5 className="fw-bold mb-0 d-flex align-items-center gap-2">
                 <i className="fas fa-map-marked-alt" style={{ color: "var(--primary-color)" }} />
@@ -577,6 +596,46 @@ function Home() {
                 constructorType={"mapChart"}
                 options={mapOptions}
               />
+            </div>
+          </div>
+        </div>
+        <div className="col-lg-4">
+          <div className="card-premium h-100">
+            <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--border-color)" }}>
+              <h5 className="fw-bold mb-0 d-flex align-items-center gap-2">
+                <i className="fas fa-list-ol" style={{ color: "var(--primary-color)" }} />
+                Ranking por Estado
+              </h5>
+            </div>
+            <div className="card-body p-0" style={{ overflowY: "auto", maxHeight: "420px" }}>
+              {tabelaEstados.length === 0 ? (
+                <div className="text-center py-5">
+                  <p className="text-muted small">Nenhuma venda no período.</p>
+                </div>
+              ) : (
+                <table className="table table-premium mb-0">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Estado</th>
+                      <th className="text-center">Sigla</th>
+                      <th className="text-end">Vendas</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tabelaEstados.map(({ sigla, nome, value }, i) => (
+                      <tr key={sigla}>
+                        <td className="text-muted small">{i + 1}</td>
+                        <td className="fw-semibold">{nome}</td>
+                        <td className="text-center">
+                          <span className="badge-status" style={{ fontSize: "0.7rem" }}>{sigla}</span>
+                        </td>
+                        <td className="text-end fw-bold" style={{ color: "var(--primary-color)" }}>{value}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         </div>
