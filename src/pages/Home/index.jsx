@@ -158,7 +158,7 @@ function Home() {
       }
       return true;
     });
-  }, [comprasT, filterPeriod, customRange]);
+  }, [todasCompras, filterPeriod, customRange]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Dados do gráfico principal
   const chartData = useMemo(
