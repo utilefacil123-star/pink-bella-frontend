@@ -24,7 +24,7 @@ function Home() {
   const { comprasT = [] } = useContext(CompraContext);
 
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [filterPeriod, setFilterPeriod] = useState("month");
+  const [filterPeriod, setFilterPeriod] = useState("year");
   const [customRange, setCustomRange] = useState({ start: "", end: "" });
 
   // Atualiza o relógio
@@ -55,6 +55,7 @@ function Home() {
       if (filterPeriod === "month")
         return compraDate.getMonth() === now.getMonth() && compraDate.getFullYear() === now.getFullYear();
       if (filterPeriod === "year") return compraDate.getFullYear() === now.getFullYear();
+      if (filterPeriod === "all") return true;
       if (filterPeriod === "range" && customRange.start && customRange.end) {
         const start = new Date(customRange.start);
         const end = new Date(customRange.end);
@@ -161,15 +162,14 @@ function Home() {
     [filteredCompras] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  // Mapa usa todas as compras carregadas (sem filtro de período)
   const vendasPorEstado = useMemo(() => {
     const contagem = {};
-    comprasT.forEach((c) => {
+    filteredCompras.forEach((c) => {
       const estado = c.endereco_entrega?.estado;
       if (estado) contagem[estado] = (contagem[estado] || 0) + 1;
     });
-    return Object.entries(contagem).map(([sigla, value]) => ({ sigla, value }));
-  }, [comprasT]);
+    return Object.entries(contagem).map(([id, value]) => ({ id, value }));
+  }, [filteredCompras]);
 
   const mapOptions = useMemo(
     () => ({
@@ -195,7 +195,7 @@ function Home() {
       series: [
         {
           mapData: brazilMapData,
-          joinBy: ["id", "sigla"],
+          joinBy: "id",
           name: "Vendas",
           data: vendasPorEstado,
           states: { hover: { color: primaryColor } },
@@ -280,7 +280,8 @@ function Home() {
     week: "Esta Semana",
     month: "Este Mês",
     year: "Este Ano",
-    range: "Período",
+    all: "Todo Período",
+    range: "Período personalizado",
   };
 
   return (
@@ -328,6 +329,7 @@ function Home() {
             <option value="week">Esta Semana</option>
             <option value="month">Este Mês</option>
             <option value="year">Este Ano</option>
+            <option value="all">Todo Período</option>
             <option value="range">Período personalizado</option>
           </select>
         </div>
