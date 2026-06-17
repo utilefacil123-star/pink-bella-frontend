@@ -1,13 +1,13 @@
 // src/pages/Compras/novo.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { criarCompra } from "../../controllers/compraController";
 import { buscarClientePorId } from "../../controllers/clienteController";
-import { listarProdutos } from "../../controllers/produtoController";
+import { listarProdutos, listarVariacoesProduto } from "../../controllers/produtoController";
 import { calcularFrete } from "../../controllers/freteController";
 import { useToast } from "../../context/ToastContext";
 
-const ITEM_VAZIO = { produto_id: "", quantidade: 1 };
+const ITEM_VAZIO = { produto_id: "", quantidade: 1, variacao_id: "" };
 
 function NovaCompra() {
   const navigate = useNavigate();
@@ -24,6 +24,10 @@ function NovaCompra() {
   const [calculandoFrete, setCalculandoFrete] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [erroFrete, setErroFrete] = useState("");
+
+  // variacoesPorProduto: { [produto_id]: variacao[] }
+  const [variacoesPorProduto, setVariacoesPorProduto] = useState({});
+  const variacoesCache = useRef({});
 
   useEffect(() => {
     async function fetchData() {
@@ -55,13 +59,40 @@ function NovaCompra() {
     }
   };
 
+  const carregarVariacoes = useCallback(async (produtoId) => {
+    if (!produtoId || variacoesCache.current[produtoId] !== undefined) return;
+    variacoesCache.current[produtoId] = []; // marca como em busca para não duplicar
+    try {
+      const lista = await listarVariacoesProduto(produtoId);
+      variacoesCache.current[produtoId] = lista;
+      setVariacoesPorProduto((prev) => ({ ...prev, [produtoId]: lista }));
+    } catch {
+      setVariacoesPorProduto((prev) => ({ ...prev, [produtoId]: [] }));
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const temVariacoesReais = (produtoId) => {
+    const vars = variacoesPorProduto[produtoId];
+    if (!vars) return false;
+    return vars.some((v) => v.ativo && v.tamanho !== 'Único');
+  };
+
   const handleItemChange = (index, e) => {
     const { name, value } = e.target;
     const novosItens = [...itens];
-    novosItens[index] = {
-      ...novosItens[index],
-      [name]: name === "quantidade" || name === "produto_id" ? parseInt(value) || "" : value,
-    };
+
+    if (name === "produto_id") {
+      const parsed = parseInt(value) || "";
+      novosItens[index] = { ...novosItens[index], produto_id: parsed, variacao_id: "" };
+      if (parsed) carregarVariacoes(parsed);
+    } else if (name === "variacao_id") {
+      novosItens[index] = { ...novosItens[index], variacao_id: parseInt(value) || "" };
+    } else if (name === "quantidade") {
+      novosItens[index] = { ...novosItens[index], quantidade: parseInt(value) || "" };
+    } else {
+      novosItens[index] = { ...novosItens[index], [name]: value };
+    }
+
     setItens(novosItens);
     resetarFrete();
   };
@@ -83,6 +114,14 @@ function NovaCompra() {
     if (!itensValidos) {
       toast.warning("Selecione um produto e informe quantidade válida para todos os itens.");
       return;
+    }
+
+    for (const item of itens) {
+      if (temVariacoesReais(item.produto_id) && !item.variacao_id) {
+        const prod = produtos.find((p) => p.id === item.produto_id);
+        toast.warning(`Selecione um tamanho/cor para "${prod?.nome || 'o produto selecionado'}".`);
+        return;
+      }
     }
     if (!cliente?.endereco?.cep) {
       toast.warning("Cliente sem CEP cadastrado. Cadastre um endereço antes de criar uma compra.");
@@ -109,9 +148,14 @@ function NovaCompra() {
     if (!freteEscolhido) return;
     setConfirmando(true);
     try {
+      const itensMapeados = itens.map((item) => ({
+        produto_id: item.produto_id,
+        quantidade: item.quantidade,
+        ...(item.variacao_id ? { variacao_id: item.variacao_id } : {}),
+      }));
       await criarCompra({
         cliente_id: parseInt(clienteId),
-        itens,
+        itens: itensMapeados,
         frete_selecionado: freteEscolhido,
       });
       toast.success("Compra registrada com sucesso!");
@@ -232,6 +276,33 @@ function NovaCompra() {
                     ))}
                   </select>
                 </div>
+
+                {/* Seletor de variação — aparece quando o produto tem tamanhos cadastrados */}
+                {item.produto_id && temVariacoesReais(item.produto_id) && (
+                  <div className="col-md-6">
+                    <label className="form-label fw-semibold" style={{ color: "var(--text-color)" }}>
+                      Tamanho / Cor <span style={{ color: "var(--status-danger)" }}>*</span>
+                    </label>
+                    <select
+                      className="form-select"
+                      name="variacao_id"
+                      value={item.variacao_id}
+                      onChange={(e) => handleItemChange(index, e)}
+                      required
+                    >
+                      <option value="">Selecione o tamanho</option>
+                      {(variacoesPorProduto[item.produto_id] || [])
+                        .filter((v) => v.ativo && v.tamanho !== 'Único')
+                        .map((v) => (
+                          <option key={v.id} value={v.id} disabled={v.estoque === 0}>
+                            {v.tamanho}{v.cor ? ` — ${v.cor}` : ""}
+                            {v.estoque === 0 ? " (sem estoque)" : ` (${v.estoque} em estoque)`}
+                          </option>
+                        ))
+                      }
+                    </select>
+                  </div>
+                )}
 
                 <div className="col-md-4">
                   <label

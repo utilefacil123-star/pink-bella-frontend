@@ -55,3 +55,42 @@ export async function deletarProduto(id) {
   const response = await api.delete(`/produtos/${id}`);
   return response.data;
 }
+
+// --- Variações ---
+
+export async function listarVariacoesProduto(produtoId) {
+  const response = await api.get(`/produtos/${produtoId}/variacoes`);
+  return response.data;
+}
+
+export async function criarVariacao(produtoId, dados) {
+  const response = await api.post(`/produtos/${produtoId}/variacoes`, dados);
+  return response.data;
+}
+
+export async function atualizarVariacao(produtoId, varId, dados) {
+  const response = await api.put(`/produtos/${produtoId}/variacoes/${varId}`, dados);
+  return response.data;
+}
+
+export async function deletarVariacao(produtoId, varId) {
+  const response = await api.delete(`/produtos/${produtoId}/variacoes/${varId}`);
+  return response.data;
+}
+
+// --- Categorias ---
+
+export async function listarCategorias() {
+  const response = await api.get('/categorias');
+  return response.data;
+}
+
+export async function criarCategoria(nome) {
+  const response = await api.post('/categorias', { nome });
+  return response.data;
+}
+
+export async function salvarCategoriasProduto(produtoId, categoriaIds) {
+  const response = await api.put(`/produtos/${produtoId}/categorias`, { categorias: categoriaIds });
+  return response.data;
+}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { ToastProvider } from '../../context/ToastContext';
 import Produtos from './Produtos';
 import * as controller from '../../controllers/produtoController';
 
@@ -8,9 +9,11 @@ jest.mock('../../controllers/produtoController');
 
 const renderPagina = () =>
   render(
-    <MemoryRouter>
-      <Produtos />
-    </MemoryRouter>
+    <ToastProvider>
+      <MemoryRouter>
+        <Produtos />
+      </MemoryRouter>
+    </ToastProvider>
   );
 
 const produtosMock = [
@@ -45,7 +48,7 @@ describe('Produtos — listagem', () => {
     renderPagina();
     await waitFor(() => expect(screen.getByText('Vestido Floral')).toBeInTheDocument());
 
-    fireEvent.change(screen.getByPlaceholderText(/buscar por nome/i), {
+    fireEvent.change(screen.getByPlaceholderText(/nome do produto/i), {
       target: { value: 'blusa' },
     });
 
@@ -69,15 +72,19 @@ describe('Produtos — listagem', () => {
 });
 
 describe('Produtos — exclusão', () => {
-  it('remove produto da lista após confirmar exclusão', async () => {
+  it('remove produto da lista após confirmar no modal', async () => {
     controller.listarProdutos.mockResolvedValue([produtosMock[0]]);
     controller.deletarProduto.mockResolvedValue({ message: 'Produto removido com sucesso!' });
-    window.confirm = jest.fn().mockReturnValue(true);
 
     renderPagina();
     await waitFor(() => expect(screen.getByText('Vestido Floral')).toBeInTheDocument());
 
+    // Abre o modal de confirmação
     fireEvent.click(screen.getByRole('button', { name: /excluir/i }));
+
+    // Clica em "Confirmar" no modal do ToastContext
+    await waitFor(() => expect(screen.getByText(/confirmar/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /^confirmar$/i }));
 
     await waitFor(() =>
       expect(screen.queryByText('Vestido Floral')).not.toBeInTheDocument()
@@ -85,14 +92,18 @@ describe('Produtos — exclusão', () => {
     expect(controller.deletarProduto).toHaveBeenCalledWith(1);
   });
 
-  it('não remove produto se exclusão for cancelada', async () => {
+  it('não remove produto se cancelar no modal', async () => {
     controller.listarProdutos.mockResolvedValue([produtosMock[0]]);
-    window.confirm = jest.fn().mockReturnValue(false);
 
     renderPagina();
     await waitFor(() => expect(screen.getByText('Vestido Floral')).toBeInTheDocument());
 
+    // Abre o modal de confirmação
     fireEvent.click(screen.getByRole('button', { name: /excluir/i }));
+
+    // Clica em "Cancelar" no modal
+    await waitFor(() => expect(screen.getByRole('button', { name: /cancelar/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /cancelar/i }));
 
     expect(controller.deletarProduto).not.toHaveBeenCalled();
     expect(screen.getByText('Vestido Floral')).toBeInTheDocument();
