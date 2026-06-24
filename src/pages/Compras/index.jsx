@@ -63,12 +63,16 @@ function Compras() {
   const handleMarcarComoPago = async (compraId) => {
     try {
       const atualizada = await atualizarStatusCompra(compraId, "Pago");
-      setCompras((prev) => prev.map((c) => (c.id === compraId ? atualizada : c)));
-      toast.success(`Compra #${compraId} marcada como Pago.`);
       await carregarSaldo();
       await carregarComprasT();
-    } catch {
-      toast.error("Erro ao marcar compra como paga.");
+      if (atualizada?.aviso) {
+        toast.warning(`Compra #${compraId} marcada como Pago, mas houve um problema com o carrinho Melhor Envio: ${atualizada.aviso}`);
+      } else {
+        toast.success(`Compra #${compraId} adicionada ao carrinho Melhor Envio.`);
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.error || "Erro ao marcar compra como paga.";
+      toast.error(msg);
     }
   };
 
@@ -154,7 +158,7 @@ function Compras() {
       const intervalo = setInterval(async () => {
         const dados = await obterSaldoMelhorEnvio();
         setSaldo(dados.saldo);
-        if (dados.saldo >= frete) {
+        if (dados.saldo >= dados.Frete) {
           clearInterval(intervalo);
           setVerificandoPagamento(false);
           try {
