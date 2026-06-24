@@ -212,6 +212,7 @@ function Compras() {
       const dados = resultado[compra.codigo_etiqueta] || Object.values(resultado)[0];
       if (dados) {
         setRastreiosStatus(prev => ({ ...prev, [compra.id]: dados }));
+        await carregarComprasT(); // atualiza codigo_rastreio salvo no banco
       } else {
         toast.info("Nenhuma informação de rastreio disponível ainda.");
       }
