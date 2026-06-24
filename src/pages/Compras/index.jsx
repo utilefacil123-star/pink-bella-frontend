@@ -146,12 +146,23 @@ function Compras() {
   const abrirPagamentoPix = async () => {
     try {
       const saldosC = await obterSaldoMelhorEnvio();
+
+      if (!saldosC.Frete || saldosC.Frete <= 0) {
+        toast.warning("Carrinho Melhor Envio está vazio. Adicione a compra ao carrinho primeiro.");
+        return;
+      }
+
       if (saldosC.saldo >= saldosC.Frete) {
+        toast.info(`Saldo suficiente (R$ ${saldosC.saldo.toFixed(2).replace(".",",")}). Processando pagamento das etiquetas...`);
         setVerificandoPagamento(true);
+        window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
         const pix = await gerarPixParaCarrinho();
         setPagamentoPix(pix);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        toast.info(`Saldo insuficiente. QR Code PIX gerado — role para o topo para visualizar.`);
       }
+
       await carregarComprasT();
       await carregarSaldo();
     } catch {
