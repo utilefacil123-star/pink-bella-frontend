@@ -61,16 +61,22 @@ function Compras() {
   }, [filtroTextoLocal]);
 
   const handleMarcarComoPago = async (compraId) => {
+    // Atualização otimista imediata — remove o botão antes da resposta chegar
+    setCompras((prev) => prev.map((c) =>
+      c.id === compraId ? { ...c, status_compra: "Pagar Etiqueta" } : c
+    ));
     try {
       const atualizada = await atualizarStatusCompra(compraId, "Pago");
       await carregarSaldo();
       await carregarComprasT();
       if (atualizada?.aviso) {
-        toast.warning(`Compra #${compraId} marcada como Pago, mas houve um problema com o carrinho Melhor Envio: ${atualizada.aviso}`);
+        toast.warning(`Compra #${compraId} marcada como Pago. Problema no carrinho ME: ${atualizada.aviso}`);
       } else {
-        toast.success(`Compra #${compraId} adicionada ao carrinho Melhor Envio.`);
+        toast.success(`Compra #${compraId} no carrinho! Use "Pagar Carrinho" acima para pagar a etiqueta.`);
       }
     } catch (err) {
+      // Reverte a atualização otimista em caso de erro
+      await carregarComprasT();
       const msg = err?.response?.data?.error || "Erro ao marcar compra como paga.";
       toast.error(msg);
     }
@@ -246,6 +252,7 @@ function Compras() {
   const statusToClass = {
     "Pendente": "badge-status pendente",
     "Pago": "badge-status pago",
+    "Pagar Etiqueta": "badge-status aguardando",
     "Aguardando Etiqueta": "badge-status aguardando",
     "Etiqueta PDF Gerada": "badge-status postado",
     "Postado": "badge-status envio",
@@ -257,6 +264,7 @@ function Compras() {
   const statusToCardStyle = {
     "Pendente": { borderLeft: "4px solid var(--status-warning)" },
     "Pago": { borderLeft: "4px solid var(--status-success)" },
+    "Pagar Etiqueta": { borderLeft: "4px solid var(--status-warning)" },
     "Aguardando Etiqueta": { borderLeft: "4px solid var(--status-info)" },
     "Etiqueta PDF Gerada": { borderLeft: "4px solid var(--primary-color)" },
     "Postado": { borderLeft: "4px solid var(--status-info)" },
@@ -564,6 +572,17 @@ function Compras() {
                                   onClick={() => handleAdicionarAoCarrinho(compra.id)}
                                 >
                                   <i className="fas fa-shopping-cart me-1"></i>Carrinho
+                                </button>
+                              )}
+                              {compra.status_compra === "Pagar Etiqueta" && (
+                                <button
+                                  className="btn btn-sm btn-warning fw-bold"
+                                  style={{ borderRadius: '8px', fontSize: '0.75rem' }}
+                                  onClick={abrirPagamentoPix}
+                                  disabled={verificandoPagamento}
+                                  title="Pagar a etiqueta de frete no Melhor Envio"
+                                >
+                                  <i className="fas fa-credit-card me-1"></i>Pagar Etiqueta
                                 </button>
                               )}
                               {compra.status_compra === "Aguardando Etiqueta" && (
