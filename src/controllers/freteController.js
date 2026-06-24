@@ -74,6 +74,16 @@ export async function imprimirEtiquetas(orders) {
 }
 
 
+export async function rastrearEnvioIndividual(codigoEtiqueta) {
+  try {
+    const response = await api.post('/melhor-envio/rastrear-envios', { orders: [codigoEtiqueta] });
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao rastrear envio:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
 export async function limparCarrinhoObsoleto() {
   try {
     const response = await api.delete('/melhor-envio/carrinho-limpar-obsoletos');

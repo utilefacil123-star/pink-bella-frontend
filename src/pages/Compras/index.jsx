@@ -13,6 +13,7 @@ import {
   comprarEtiqueta,
   gerarEtiqueta,
   limparCarrinhoObsoleto,
+  rastrearEnvioIndividual,
 } from "../../controllers/freteController";
 
 function Compras() {
@@ -30,6 +31,8 @@ function Compras() {
   const [expanded, setExpanded] = useState({});
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printUrl, setPrintUrl] = useState("");
+  const [rastreiosStatus, setRastreiosStatus] = useState({});
+  const [rastreandoId, setRastreandoId] = useState(null);
 
   const carregarSaldo = async () => {
     try {
@@ -149,6 +152,27 @@ function Compras() {
     } catch (err) {
       console.error("Erro ao gerar etiquetas em lote:", err);
       toast.error("Erro ao gerar etiquetas em lote.");
+    }
+  };
+
+  const handleVerificarRastreio = async (compra) => {
+    if (!compra.codigo_etiqueta) {
+      toast.warning("Compra sem código de etiqueta — aguardando geração.");
+      return;
+    }
+    setRastreandoId(compra.id);
+    try {
+      const resultado = await rastrearEnvioIndividual(compra.codigo_etiqueta);
+      const dados = resultado[compra.codigo_etiqueta] || Object.values(resultado)[0];
+      if (dados) {
+        setRastreiosStatus(prev => ({ ...prev, [compra.id]: dados }));
+      } else {
+        toast.info("Nenhuma informação de rastreio disponível ainda.");
+      }
+    } catch {
+      toast.error("Erro ao consultar rastreio. Tente novamente.");
+    } finally {
+      setRastreandoId(null);
     }
   };
 
@@ -581,7 +605,7 @@ function Compras() {
                                 {compra.cliente?.nome?.charAt(0).toUpperCase() || "C"}
                               </div>
                               <div>
-                                <div className="fw-bold text-white">{compra.cliente?.nome || "-"}</div>
+                                <div className="fw-bold" style={{ color: 'var(--text-color)' }}>{compra.cliente?.nome || "-"}</div>
                                 <small className="text-muted text-xs">{compra.cliente?.email || ""}</small>
                               </div>
                             </div>
@@ -728,49 +752,124 @@ function Compras() {
                                         <h6 className="fw-bold text-success mb-2">
                                           <i className="fas fa-truck me-2"></i> Informações do Frete
                                         </h6>
-                                        <div className="card p-3 border-0" style={{ backgroundColor: 'var(--surface-color)', borderRadius: '12px' }}>
-                                          <p className="mb-1 small">
-                                            <strong>Transportadora:</strong> {compra.frete.transportadora} ({compra.frete.servico_frete})
-                                          </p>
-                                          <p className="mb-1 small">
-                                            <strong>Valor do Frete:</strong> 
-                                            <span className="fw-bold text-success ms-1">
-                                              R$ {parseFloat(compra.frete.valor || 0).toFixed(2).replace(".", ",")}
-                                            </span>
-                                          </p>
-                                          <p className="mb-0 small">
-                                            <strong>Prazo Estimado:</strong> {compra.frete.prazo_frete_dias} dias úteis
-                                          </p>
+                                        <div className="p-3" style={{ backgroundColor: 'rgba(16,185,129,0.06)', borderRadius: '12px', border: '1px solid rgba(16,185,129,0.15)' }}>
+                                          <div className="row g-2">
+                                            <div className="col-6">
+                                              <div className="small" style={{ color: 'var(--text-muted)' }}>Transportadora</div>
+                                              <div className="fw-bold small" style={{ color: 'var(--text-color)' }}>{compra.frete.transportadora || "—"}</div>
+                                            </div>
+                                            <div className="col-6">
+                                              <div className="small" style={{ color: 'var(--text-muted)' }}>Serviço</div>
+                                              <div className="fw-bold small" style={{ color: 'var(--text-color)' }}>{compra.frete.servico || compra.frete.servico_frete || "—"}</div>
+                                            </div>
+                                            <div className="col-6">
+                                              <div className="small" style={{ color: 'var(--text-muted)' }}>Valor Pago</div>
+                                              <div className="fw-bold" style={{ color: 'var(--status-success)' }}>
+                                                R$ {parseFloat(compra.frete.valor || 0).toFixed(2).replace(".", ",")}
+                                              </div>
+                                            </div>
+                                            <div className="col-6">
+                                              <div className="small" style={{ color: 'var(--text-muted)' }}>Prazo</div>
+                                              <div className="fw-bold small" style={{ color: 'var(--text-color)' }}>
+                                                {compra.frete.prazo_dias_uteis || compra.frete.prazo_frete_dias || "—"} dias úteis
+                                              </div>
+                                            </div>
+                                          </div>
+
+                                          {compra.pacote && (compra.pacote.peso || compra.pacote.altura) && (
+                                            <div className="mt-2 pt-2" style={{ borderTop: '1px solid rgba(16,185,129,0.2)' }}>
+                                              <div className="small mb-1" style={{ color: 'var(--text-muted)' }}>Pacote</div>
+                                              <div className="d-flex flex-wrap gap-3">
+                                                {compra.pacote.peso && (
+                                                  <span className="small" style={{ color: 'var(--text-color)' }}>
+                                                    <i className="fas fa-weight-hanging me-1" style={{ color: 'var(--text-muted)' }}></i>
+                                                    {parseFloat(compra.pacote.peso).toFixed(2)} kg
+                                                  </span>
+                                                )}
+                                                {compra.pacote.altura && (
+                                                  <span className="small" style={{ color: 'var(--text-color)' }}>
+                                                    <i className="fas fa-cube me-1" style={{ color: 'var(--text-muted)' }}></i>
+                                                    {compra.pacote.altura}×{compra.pacote.largura}×{compra.pacote.comprimento} cm
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          )}
                                         </div>
                                       </div>
                                     )}
 
-                                    {compra.codigo_rastreio && (
+                                    {(compra.codigo_rastreio || compra.codigo_etiqueta) && (
                                       <div className="mb-3">
-                                        <h6 className="fw-bold text-info mb-2">
-                                          <i className="fas fa-search me-2"></i> Rastreamento
+                                        <h6 className="fw-bold mb-2" style={{ color: 'var(--status-info)' }}>
+                                          <i className="fas fa-map-marker-alt me-2"></i> Rastreamento
                                         </h6>
-                                        <div className="d-flex flex-wrap gap-2">
-                                          <a 
-                                            href={compra.codigo_rastreio} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer" 
-                                            className="btn btn-outline-info btn-sm fw-bold px-3 py-2"
-                                            style={{ borderRadius: "8px" }}
-                                          >
-                                            <i className="fas fa-external-link-alt me-1"></i> Rastreio
-                                          </a>
-                                          <button
-                                            className="btn btn-outline-primary btn-sm fw-bold px-3 py-2"
-                                            style={{ borderRadius: "8px" }}
-                                            onClick={() => {
-                                              const texto = `Seu pedido está a caminho! Acompanhe aqui: ${compra.codigo_rastreio}`;
-                                              navigator.clipboard.writeText(texto);
-                                              toast.success("Mensagem de rastreio copiada!");
-                                            }}
-                                          >
-                                            <i className="fas fa-copy me-1"></i> Copiar Aviso
-                                          </button>
+                                        <div className="p-3" style={{ backgroundColor: 'rgba(59,130,246,0.06)', borderRadius: '12px', border: '1px solid rgba(59,130,246,0.15)' }}>
+                                          {compra.codigo_etiqueta && (
+                                            <div className="small mb-2" style={{ color: 'var(--text-muted)' }}>
+                                              Etiqueta ME: <code style={{ color: 'var(--primary-color)' }}>{compra.codigo_etiqueta}</code>
+                                            </div>
+                                          )}
+
+                                          <div className="d-flex flex-wrap gap-2 mb-2">
+                                            <button
+                                              className="btn btn-sm fw-bold"
+                                              style={{ borderRadius: '8px', backgroundColor: 'rgba(59,130,246,0.15)', color: 'var(--status-info)', border: '1px solid rgba(59,130,246,0.3)' }}
+                                              onClick={() => handleVerificarRastreio(compra)}
+                                              disabled={rastreandoId === compra.id}
+                                            >
+                                              <i className={`fas ${rastreandoId === compra.id ? "fa-spinner fa-spin" : "fa-satellite-dish"} me-1`}></i>
+                                              {rastreandoId === compra.id ? "Verificando..." : "Verificar Status"}
+                                            </button>
+                                            {compra.codigo_rastreio && (
+                                              <>
+                                                <a
+                                                  href={compra.codigo_rastreio}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="btn btn-sm fw-bold"
+                                                  style={{ borderRadius: '8px', backgroundColor: 'rgba(59,130,246,0.1)', color: 'var(--status-info)', border: '1px solid rgba(59,130,246,0.25)' }}
+                                                >
+                                                  <i className="fas fa-external-link-alt me-1"></i> Rastrear
+                                                </a>
+                                                <button
+                                                  className="btn btn-sm"
+                                                  style={{ borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', border: '1px solid var(--border-color)' }}
+                                                  onClick={() => {
+                                                    navigator.clipboard.writeText(`Seu pedido está a caminho! Acompanhe aqui: ${compra.codigo_rastreio}`);
+                                                    toast.success("Mensagem de rastreio copiada!");
+                                                  }}
+                                                >
+                                                  <i className="fas fa-copy me-1"></i> Copiar
+                                                </button>
+                                              </>
+                                            )}
+                                          </div>
+
+                                          {rastreiosStatus[compra.id] && (() => {
+                                            const r = rastreiosStatus[compra.id];
+                                            const eventos = r.events || r.tracking?.events || [];
+                                            const ultimo = eventos[0];
+                                            return (
+                                              <div className="mt-2 pt-2" style={{ borderTop: '1px solid rgba(59,130,246,0.2)' }}>
+                                                {r.tracking && (
+                                                  <div className="small mb-1" style={{ color: 'var(--text-muted)' }}>
+                                                    Código: <strong style={{ color: 'var(--text-color)' }}>{r.tracking}</strong>
+                                                  </div>
+                                                )}
+                                                {ultimo && (
+                                                  <div className="small p-2 rounded" style={{ backgroundColor: 'rgba(0,0,0,0.15)' }}>
+                                                    <div className="fw-bold mb-1" style={{ color: 'var(--status-info)' }}>{ultimo.description || ultimo.status}</div>
+                                                    {ultimo.location && <div style={{ color: 'var(--text-muted)' }}><i className="fas fa-map-pin me-1"></i>{ultimo.location}</div>}
+                                                    {ultimo.date && <div style={{ color: 'var(--text-muted)' }}><i className="far fa-clock me-1"></i>{new Date(ultimo.date).toLocaleString('pt-BR')}</div>}
+                                                  </div>
+                                                )}
+                                                {eventos.length === 0 && (
+                                                  <div className="small" style={{ color: 'var(--text-muted)' }}>Nenhum evento de rastreio disponível ainda.</div>
+                                                )}
+                                              </div>
+                                            );
+                                          })()}
                                         </div>
                                       </div>
                                     )}
@@ -859,7 +958,7 @@ function Compras() {
                         {compra.status_compra}
                       </span>
                     </div>
-                    <div className="fw-bold text-white mb-1" style={{ fontSize: '1.05rem' }}>
+                    <div className="fw-bold mb-1" style={{ fontSize: '1.05rem', color: 'var(--text-color)' }}>
                       {compra.cliente?.nome || "Cliente não informado"}
                     </div>
                     <div className="text-muted small mb-1">
@@ -890,19 +989,26 @@ function Compras() {
 
                     {expanded[compra.id] && (
                       <div className="mt-3 p-3 rounded" style={{ backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)' }}>
-                        <div className="mb-2 text-white-50 small">
-                          <strong>Itens:</strong>
+                        <div className="mb-2 small" style={{ color: 'var(--text-muted)' }}>
+                          <strong style={{ color: 'var(--text-color)' }}>Itens:</strong>
                           <div className="mt-1">
                             {compra.itens?.map((item, idx) => (
-                              <div key={idx} className="mb-1 text-white">
+                              <div key={idx} className="mb-1" style={{ color: 'var(--text-color)' }}>
                                 {item.quantidade}x {item.produto?.nome} (R$ {parseFloat(item.subtotal_item || 0).toFixed(2).replace(".", ",")})
                               </div>
                             ))}
                           </div>
                         </div>
                         {compra.frete && (
-                          <div className="mb-2 text-white-50 small border-top pt-2" style={{ borderColor: 'var(--border-color)' }}>
-                            <strong>Frete:</strong> {compra.frete.transportadora} - R$ {parseFloat(compra.frete.valor || 0).toFixed(2).replace(".", ",")} ({compra.frete.prazo_frete_dias}d)
+                          <div className="mb-2 small border-top pt-2" style={{ color: 'var(--text-muted)', borderColor: 'var(--border-color)' }}>
+                            <strong style={{ color: 'var(--text-color)' }}>Frete:</strong>{' '}
+                            {compra.frete.transportadora} — R$ {parseFloat(compra.frete.valor || 0).toFixed(2).replace(".", ",")}
+                            {' '}({compra.frete.prazo_dias_uteis || compra.frete.prazo_frete_dias || "—"}d)
+                            {compra.pacote?.peso && (
+                              <span className="ms-2" style={{ color: 'var(--text-muted)' }}>
+                                · {parseFloat(compra.pacote.peso).toFixed(2)} kg
+                              </span>
+                            )}
                           </div>
                         )}
                         <div className="d-flex flex-wrap gap-2 mt-3 pt-2 border-top" style={{ borderColor: 'var(--border-color)' }}>

@@ -34,7 +34,42 @@
   --header-height: 64px;
 }
 
-/* 2. Reset Global & Tipografia */
+/* 2. Override Bootstrap vars para seguir nosso tema (evita texto escuro em fundo escuro) */
+:root {
+  --bs-body-color: var(--text-color);
+  --bs-secondary-color: var(--text-muted);
+  --bs-card-bg: var(--surface-color);
+  --bs-card-color: var(--text-color);
+  --bs-card-border-color: var(--border-color);
+  --bs-table-color: var(--text-color);
+  --bs-table-bg: transparent;
+  --bs-table-striped-bg: rgba(255, 255, 255, 0.03);
+  --bs-table-hover-bg: rgba(255, 255, 255, 0.05);
+  --bs-border-color: var(--border-color);
+}
+
+.text-muted {
+  color: var(--text-muted) !important;
+}
+
+.card {
+  --bs-card-bg: var(--surface-color);
+  --bs-card-color: var(--text-color);
+  background-color: var(--surface-color);
+  color: var(--text-color);
+}
+
+.table {
+  --bs-table-color: var(--text-color);
+  color: var(--text-color);
+}
+
+.table > :not(caption) > * > * {
+  color: var(--text-color);
+  background-color: transparent;
+}
+
+/* 3. Reset Global & Tipografia */
 *, *::before, *::after {
   box-sizing: border-box;
 }
