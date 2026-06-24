@@ -184,10 +184,14 @@ function Compras() {
   const handleSelecionarFrete = async (compraId, opcao) => {
     setSelecionandoFreteId(opcao.id_servico);
     try {
-      await atualizarFreteCompra(compraId, opcao);
+      const resultado = await atualizarFreteCompra(compraId, opcao);
       toast.success(`Frete alterado para ${opcao.nome_transportadora} — ${opcao.servico} (R$ ${opcao.preco_frete.toFixed(2).replace(".", ",")})`);
+      if (resultado?.aviso) {
+        toast.info(resultado.aviso);
+      }
       setCotacoesAberta(null);
       await carregarComprasT();
+      await carregarSaldo();
     } catch (err) {
       const msg = err?.response?.data?.error || "Erro ao atualizar frete.";
       toast.error(msg);
@@ -841,7 +845,7 @@ function Compras() {
                                     )}
 
                                     {/* Nova Cotação de Frete */}
-                                    {['Pendente', 'Pago'].includes(compra.status_compra) && (
+                                    {['Pendente', 'Pago', 'Pagar Etiqueta'].includes(compra.status_compra) && (
                                       <div className="mb-3">
                                         <button
                                           className="btn btn-sm fw-bold w-100"
