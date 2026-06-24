@@ -77,3 +77,25 @@ export async function atualizarCompra(id, payload) {
     throw error;
   }
 }
+
+// Recalcula todas as opções de frete para uma compra existente
+export async function cotarFreteParaCompra(compraId) {
+  try {
+    const response = await api.get(`/compras/${compraId}/cotar-frete`);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao cotar frete:', error);
+    throw error;
+  }
+}
+
+// Atualiza a opção de frete selecionada na compra
+export async function atualizarFreteCompra(compraId, opcao) {
+  try {
+    const response = await api.put(`/compras/${compraId}/frete`, opcao);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao atualizar frete da compra:', error);
+    throw error;
+  }
+}

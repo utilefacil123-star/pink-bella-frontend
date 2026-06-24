@@ -6,6 +6,8 @@ import { useToast } from "../../context/ToastContext";
 import {
   atualizarStatusCompra,
   atualizarRastreio,
+  cotarFreteParaCompra,
+  atualizarFreteCompra,
 } from "../../controllers/compraController";
 import {
   obterSaldoMelhorEnvio,
@@ -33,6 +35,10 @@ function Compras() {
   const [printUrl, setPrintUrl] = useState("");
   const [rastreiosStatus, setRastreiosStatus] = useState({});
   const [rastreandoId, setRastreandoId] = useState(null);
+  const [cotacoesAberta, setCotacoesAberta] = useState(null);
+  const [cotacoes, setCotacoes] = useState([]);
+  const [cotandoId, setCotandoId] = useState(null);
+  const [selecionandoFreteId, setSelecionandoFreteId] = useState(null);
 
   const carregarSaldo = async () => {
     try {
@@ -152,6 +158,41 @@ function Compras() {
     } catch (err) {
       console.error("Erro ao gerar etiquetas em lote:", err);
       toast.error("Erro ao gerar etiquetas em lote.");
+    }
+  };
+
+  const handleNovaCotacao = async (compra) => {
+    if (cotacoesAberta === compra.id) {
+      setCotacoesAberta(null);
+      return;
+    }
+    setCotandoId(compra.id);
+    setCotacoes([]);
+    setCotacoesAberta(compra.id);
+    try {
+      const resultado = await cotarFreteParaCompra(compra.id);
+      setCotacoes(resultado.opcoes_frete || []);
+    } catch (err) {
+      const msg = err?.response?.data?.error || "Erro ao buscar cotações de frete.";
+      toast.error(msg);
+      setCotacoesAberta(null);
+    } finally {
+      setCotandoId(null);
+    }
+  };
+
+  const handleSelecionarFrete = async (compraId, opcao) => {
+    setSelecionandoFreteId(opcao.id_servico);
+    try {
+      await atualizarFreteCompra(compraId, opcao);
+      toast.success(`Frete alterado para ${opcao.nome_transportadora} — ${opcao.servico} (R$ ${opcao.preco_frete.toFixed(2).replace(".", ",")})`);
+      setCotacoesAberta(null);
+      await carregarComprasT();
+    } catch (err) {
+      const msg = err?.response?.data?.error || "Erro ao atualizar frete.";
+      toast.error(msg);
+    } finally {
+      setSelecionandoFreteId(null);
     }
   };
 
@@ -796,6 +837,73 @@ function Compras() {
                                             </div>
                                           )}
                                         </div>
+                                      </div>
+                                    )}
+
+                                    {/* Nova Cotação de Frete */}
+                                    {['Pendente', 'Pago'].includes(compra.status_compra) && (
+                                      <div className="mb-3">
+                                        <button
+                                          className="btn btn-sm fw-bold w-100"
+                                          style={{ borderRadius: '10px', backgroundColor: 'rgba(216,27,96,0.1)', color: 'var(--primary-color)', border: '1px solid rgba(216,27,96,0.3)' }}
+                                          onClick={() => handleNovaCotacao(compra)}
+                                          disabled={cotandoId === compra.id}
+                                        >
+                                          <i className={`fas ${cotandoId === compra.id ? "fa-spinner fa-spin" : cotacoesAberta === compra.id ? "fa-times" : "fa-search-dollar"} me-2`}></i>
+                                          {cotandoId === compra.id ? "Cotando..." : cotacoesAberta === compra.id ? "Fechar Cotações" : "Nova Cotação de Frete"}
+                                        </button>
+
+                                        {cotacoesAberta === compra.id && (
+                                          <div className="mt-2 p-3" style={{ backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                            {cotacoes.length === 0 && cotandoId !== compra.id && (
+                                              <p className="mb-0 small text-center" style={{ color: 'var(--text-muted)' }}>Nenhuma opção disponível.</p>
+                                            )}
+                                            {cotacoes.map((opcao) => {
+                                              const isAtual = opcao.id_servico === compra.melhor_envio_service_id;
+                                              const isSelecionando = selecionandoFreteId === opcao.id_servico;
+                                              return (
+                                                <div
+                                                  key={opcao.id_servico}
+                                                  className="d-flex align-items-center justify-content-between p-2 mb-2 rounded"
+                                                  style={{
+                                                    backgroundColor: isAtual ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)',
+                                                    border: isAtual ? '1px solid rgba(16,185,129,0.3)' : '1px solid var(--border-color)',
+                                                    borderRadius: '8px',
+                                                  }}
+                                                >
+                                                  <div style={{ flex: 1 }}>
+                                                    <div className="fw-bold small" style={{ color: 'var(--text-color)' }}>
+                                                      {opcao.nome_transportadora}
+                                                      {isAtual && (
+                                                        <span className="ms-2 badge" style={{ fontSize: '0.6rem', backgroundColor: 'rgba(16,185,129,0.2)', color: 'var(--status-success)', borderRadius: '4px', padding: '2px 6px' }}>
+                                                          atual
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                    <div className="small" style={{ color: 'var(--text-muted)' }}>
+                                                      {opcao.servico} · {opcao.prazo_dias_uteis}d úteis
+                                                    </div>
+                                                  </div>
+                                                  <div className="d-flex align-items-center gap-2">
+                                                    <span className="fw-bold" style={{ color: 'var(--status-success)', fontSize: '0.95rem', minWidth: '72px', textAlign: 'right' }}>
+                                                      R$ {opcao.preco_frete.toFixed(2).replace(".", ",")}
+                                                    </span>
+                                                    {!isAtual && (
+                                                      <button
+                                                        className="btn btn-sm fw-bold"
+                                                        style={{ borderRadius: '8px', backgroundColor: 'var(--primary-color)', color: '#fff', border: 'none', minWidth: '76px', fontSize: '0.75rem' }}
+                                                        onClick={() => handleSelecionarFrete(compra.id, opcao)}
+                                                        disabled={isSelecionando || !!selecionandoFreteId}
+                                                      >
+                                                        {isSelecionando ? <i className="fas fa-spinner fa-spin"></i> : "Selecionar"}
+                                                      </button>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
                                       </div>
                                     )}
 
