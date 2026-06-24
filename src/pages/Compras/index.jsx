@@ -97,11 +97,19 @@ function Compras() {
 
   const handleAdicionarAoCarrinho = async (compraId) => {
     try {
-      await atualizarStatusCompra(compraId, "Pago");
+      const resultado = await atualizarStatusCompra(compraId, "Pago");
       await carregarComprasT();
-      toast.success(`Compra #${compraId} adicionada ao carrinho.`);
-    } catch {
-      toast.error("Erro ao adicionar compra ao carrinho Melhor Envio.");
+      await carregarSaldo();
+      if (resultado?.aviso) {
+        toast.warning(`Compra #${compraId}: ${resultado.aviso}`);
+      } else if (resultado?.status_compra === "Pagar Etiqueta") {
+        toast.success(`Compra #${compraId} no carrinho! Clique em "Pagar Etiqueta" para pagar.`);
+      } else {
+        toast.success(`Compra #${compraId} adicionada ao carrinho.`);
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.error || "Erro ao adicionar compra ao carrinho Melhor Envio.";
+      toast.error(msg);
     }
   };
 
@@ -878,6 +886,11 @@ function Compras() {
                           {compra.status_compra === "Pago" && (
                             <button className="btn btn-warning btn-sm w-100" onClick={() => handleAdicionarAoCarrinho(compra.id)}>
                               <i className="fas fa-shopping-cart me-1"></i> Adicionar ao Carrinho
+                            </button>
+                          )}
+                          {compra.status_compra === "Pagar Etiqueta" && (
+                            <button className="btn btn-warning btn-sm w-100 fw-bold" onClick={abrirPagamentoPix} disabled={verificandoPagamento}>
+                              <i className="fas fa-credit-card me-1"></i> Pagar Etiqueta
                             </button>
                           )}
                           {compra.status_compra === "Aguardando Etiqueta" && (
