@@ -3,6 +3,7 @@ import { CompraContext } from './CompraContext';
 import { useNavigate } from 'react-router-dom';
 import { format } from "date-fns";
 import { useToast } from "../../context/ToastContext";
+import api from "../../services/api";
 import {
   atualizarStatusCompra,
   atualizarRastreio,
@@ -248,9 +249,13 @@ function Compras() {
       }
 
       if (saldosC.saldo >= saldosC.Frete) {
-        toast.info(`Saldo suficiente (R$ ${saldosC.saldo.toFixed(2).replace(".",",")}). Processando pagamento das etiquetas...`);
-        setVerificandoPagamento(true);
+        toast.info(`Saldo suficiente (R$ ${saldosC.saldo.toFixed(2).replace(".",",")}). Finalizando compra das etiquetas...`);
+        await comprarEtiqueta();
+        await carregarComprasT();
+        await carregarSaldo();
+        toast.success("Etiquetas compradas! Clique em 'Etiqueta' para gerar.");
         window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
       } else {
         const pix = await gerarPixParaCarrinho();
         setPagamentoPix(pix);
@@ -308,12 +313,7 @@ function Compras() {
         toast.warning("Código de etiqueta não disponível para esta compra.");
         return;
       }
-      const response = await fetch("http://localhost:3000/melhor-envio/imprimir-etiquetas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orders: [compra.codigo_etiqueta], mode: "public" }),
-      });
-      const data = await response.json();
+      const { data } = await api.post("/melhor-envio/imprimir-etiquetas", { orders: [compra.codigo_etiqueta], mode: "public" });
       if (data.url) {
         setPrintUrl(data.url);
         setShowPrintModal(true);
@@ -337,12 +337,7 @@ function Compras() {
     }
 
     try {
-      const response = await fetch("http://localhost:3000/melhor-envio/imprimir-etiquetas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orders: etiquetasParaImprimir, mode: "public" }),
-      });
-      const data = await response.json();
+      const { data } = await api.post("/melhor-envio/imprimir-etiquetas", { orders: etiquetasParaImprimir, mode: "public" });
       if (data.url) {
         setPrintUrl(data.url);
         setShowPrintModal(true);
@@ -351,7 +346,7 @@ function Compras() {
       }
     } catch (error) {
       console.error("Erro ao gerar link de impressão em lote:", error);
-      toast.error("Erro ao gerar link de impressão em lote.");
+      toast.error("Não foi possível gerar o link de impressão em lote.");
     }
   };
 
@@ -948,11 +943,24 @@ function Compras() {
                                                   className="btn btn-sm"
                                                   style={{ borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', border: '1px solid var(--border-color)' }}
                                                   onClick={() => {
-                                                    navigator.clipboard.writeText(`Seu pedido está a caminho! Acompanhe aqui: ${compra.codigo_rastreio}`);
+                                                    const texto = `Olá ${compra.cliente?.nome}, tudo bem? 💖\n\nPassando para avisar que em breve, seu pedido estará chegando até você. 🚚✨\n\n📍 Você pode acompanhar a entrega aqui: ${compra.codigo_rastreio}\n\nQualquer dúvida, estou à disposição! Obrigada por escolher a Pink Bella. 💕`;
+                                                    navigator.clipboard.writeText(texto);
                                                     toast.success("Mensagem de rastreio copiada!");
                                                   }}
                                                 >
                                                   <i className="fas fa-copy me-1"></i> Copiar
+                                                </button>
+                                                <button
+                                                  className="btn btn-sm fw-bold"
+                                                  style={{ borderRadius: '8px', backgroundColor: 'rgba(37,211,102,0.15)', color: '#25d366', border: '1px solid rgba(37,211,102,0.3)' }}
+                                                  onClick={() => {
+                                                    const numero = compra.cliente?.telefone?.replace(/\D/g, '');
+                                                    const texto = `Olá ${compra.cliente?.nome}, tudo bem? 💖\n\nPassando para avisar que em breve, seu pedido estará chegando até você. 🚚✨\n\n📍 Você pode acompanhar a entrega aqui: ${compra.codigo_rastreio}\n\nQualquer dúvida, estou à disposição! Obrigada por escolher a Pink Bella. 💕`;
+                                                    const url = `https://web.whatsapp.com/send?phone=55${numero}&text=${encodeURIComponent(texto)}`;
+                                                    window.open(url, '_blank');
+                                                  }}
+                                                >
+                                                  <i className="fab fa-whatsapp me-1"></i> WhatsApp
                                                 </button>
                                               </>
                                             )}
