@@ -12,6 +12,7 @@ import {
   gerarPixParaCarrinho,
   comprarEtiqueta,
   gerarEtiqueta,
+  limparCarrinhoObsoleto,
 } from "../../controllers/freteController";
 
 function Compras() {
@@ -148,6 +149,23 @@ function Compras() {
     } catch (err) {
       console.error("Erro ao gerar etiquetas em lote:", err);
       toast.error("Erro ao gerar etiquetas em lote.");
+    }
+  };
+
+  const handleLimparCarrinhoObsoleto = async () => {
+    try {
+      const resultado = await limparCarrinhoObsoleto();
+      await carregarSaldo();
+      if (resultado.removidos.length === 0) {
+        toast.info("Carrinho já está limpo — nenhum item obsoleto encontrado.");
+      } else {
+        const totalRemovido = resultado.removidos.reduce((s, i) => s + i.price, 0);
+        toast.success(
+          `${resultado.removidos.length} item(s) obsoleto(s) removido(s) — R$ ${totalRemovido.toFixed(2).replace(".", ",")} a menos no carrinho.`
+        );
+      }
+    } catch (err) {
+      toast.error("Erro ao limpar carrinho obsoleto.");
     }
   };
 
@@ -352,14 +370,24 @@ function Compras() {
         </div>
         
         <div className="col-md-4">
-          <div className="card-premium h-100" style={{ 
+          <div className="card-premium h-100" style={{
             borderLeft: "4px solid var(--status-warning)",
             backgroundColor: "rgba(245, 158, 11, 0.05)"
           }}>
             <div className="card-body text-center py-3">
               <i className="fas fa-shopping-cart fa-2x text-warning mb-2"></i>
               <h6 className="text-muted fw-bold small text-uppercase">Carrinho Melhor Envio</h6>
-              <h4 className="fw-bold mb-0 text-warning">R$ {frete.toFixed(2).replace(".", ",")}</h4>
+              <h4 className="fw-bold mb-2 text-warning">R$ {frete.toFixed(2).replace(".", ",")}</h4>
+              {frete > 0 && (
+                <button
+                  className="btn btn-sm btn-outline-secondary"
+                  style={{ fontSize: '0.7rem' }}
+                  onClick={handleLimparCarrinhoObsoleto}
+                  title="Remove do carrinho itens de pedidos antigos/cancelados"
+                >
+                  <i className="fas fa-broom me-1"></i>Limpar obsoletos
+                </button>
+              )}
             </div>
           </div>
         </div>

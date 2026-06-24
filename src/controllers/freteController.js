@@ -74,5 +74,15 @@ export async function imprimirEtiquetas(orders) {
 }
 
 
+export async function limparCarrinhoObsoleto() {
+  try {
+    const response = await api.delete('/melhor-envio/carrinho-limpar-obsoletos');
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao limpar carrinho obsoleto:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
 // 2. Mude a exportação para a sintaxe de ES Modules
 export { calcularFrete }; // <<< ESTA É A MUDANÇA CRÍTICA! 
